@@ -75,6 +75,8 @@ github.com/envoyproxy/go-control-plane v0.6.9/go.mod h1:SBwIajubJHhxtWwsL9s8ss4s
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
+github.com/florianl/go-tc v0.0.0-20200808084619-412a139fd321 h1:Ijie/bCFzXVlG/gv/qBdA3ucZ5HQWLmFHNaMdKZZvlo=
+github.com/florianl/go-tc v0.0.0-20200808084619-412a139fd321/go.mod h1:aWdDOHrIpaff8cZp6z7dgJZ1bRsgTS6pXIW0xRdFTK8=
 github.com/florianl/go-tc v0.1.0 h1:oOChnhxvsYaZLvxrILdKe1uf4lq1zDGrnG52iP5FEMk=
 github.com/florianl/go-tc v0.1.0/go.mod h1:n77vbeG0iBmb6p3oGSfS+tKZ27vV4tF+kQLevzOTzQU=
 github.com/florianl/go-tc v0.1.1-0.20200404145214-71dd2225291c h1:gldLLgOwYgi7UCTiR7f6cuk31LMez98MYXE32CrgG14=

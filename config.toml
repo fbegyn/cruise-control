@@ -1,13 +1,17 @@
+interface = "test"
+
 downloadSpeed = 10e6
 uploadSpeed = 5e6
 
 [qdiscs."1:0"]
 type = "hfsc"
+parent = "root"
   [qdiscs."1:0".specs]
   defCls = 1
 
 [qdiscs."1:1"]
 type = "fq_codel"
+parent = "1:0"
   [qdiscs."1:1".specs]
   limit = 15000
   flows = 2048
@@ -16,6 +20,7 @@ type = "fq_codel"
 
 [qdiscs."1:2"]
 type = "fq_codel"
+parent = "1:0"
   [qdiscs."1:2".specs]
   limit = 15000
   flows = 2048
@@ -24,6 +29,7 @@ type = "fq_codel"
 
 [qdiscs."1:3"]
 type = "fq_codel"
+parent = "1:0"
   [qdiscs."1:3".specs]
   limit = 15000
   flows = 2048
