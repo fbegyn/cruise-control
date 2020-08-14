@@ -2,91 +2,77 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 
 	"github.com/florianl/go-tc"
 	"github.com/go-kit/kit/log"
-	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	DownloadSpeed uint32
-	UploadSpeed   uint32
+	Interface string `yaml:"interface"`
 
-	Interface string
+	DownloadSpeed string `yaml:"download_speed"`
+	UploadSpeed   string `yaml:"upload_speed"`
 
-	Qdiscs  map[string]Qdisc
-	Classes map[string]Class
-	Filters map[string]Filter
+	Qdiscs  map[string]QdiscConfig `yaml:"qdiscs"`
+	Classes map[string]ClassConfig `yaml:"classes"`
 }
 
-type Qdisc struct {
-	Type   string
-	Parent string
-	Specs  map[string]uint32
+type QdiscConfig struct {
+	Type   string            `yaml:"type"`
+	Handle string            `yaml:"handle"`
+	Parent string            `yaml:"parent"`
+	Specs  map[string]uint32 `yaml:"specs"`
 }
 
-type Class struct {
-	Type   string
-	Parent string
-	Specs  map[string]interface{}
+type ClassConfig struct {
+	Type     string                 `yaml:"type"`
+	Classid  string                 `yaml:"classid"`
+	Parent   string                 `yaml:"parent"`
+	Specs    map[string]interface{} `yaml:"specs"`
+	Children map[string]ClassConfig `yaml:"children"`
 }
 
 type Filter struct {
-	Type  string
-	Specs map[string]uint32
+	Type string
 }
 
 var logger log.Logger
 
 func main() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath("./")
-
 	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-
-	if err := viper.ReadInConfig(); err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to read config file", "error", err)
-	}
-
-	t := Config{}
-	viper.Unmarshal(&t)
-	fmt.Println(t)
-
-	// determine the interface for cruise control to run on
-	interf, err := net.InterfaceByName(t.Interface)
+	f, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to parse interface")
+		logger.Log("msg", "failed to read in config file")
 	}
 
-	for handle, qd := range t.Qdiscs {
-		logger.Log("handle", handle, "type", qd.Type)
+	conf := Config{}
+	yaml.Unmarshal(f, &conf)
+	fmt.Println(conf.Classes)
+
+	interf, err := net.InterfaceByName(conf.Interface)
+	if err != nil {
+		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
+	}
+
+	for handle, qd := range conf.Qdiscs {
 		parseQdisc(StrHandle(handle), StrHandle(qd.Parent), uint32(interf.Index), qd)
-		//fmt.Println(test)
-		//if err := rtnl.Qdisc().Add(&test); err != nil {
-		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
-		//	return
-		//}
 	}
 
-	for handle, cl := range t.Classes {
-		logger.Log("handle", handle, "type", cl.Type)
+	for handle, cl := range conf.Classes {
 		parseClass(StrHandle(handle), StrHandle(cl.Parent), uint32(interf.Index), cl)
-		//if err := rtnl.Qdisc().Add(&test); err != nil {
-		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
-		//	return
-		//}
 	}
 }
 
-func parseQdisc(handle, parent uint32, index uint32, qd Qdisc) (tc.Object, error) {
+func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (tc.Object, error) {
+	logger.Log("msg", "parsing qdisc", "handle", handle, "type", qd.Type)
 	var attrs tc.Attribute
 	switch qd.Type {
 	case "fq_codel":
-		logger.Log("msg", "creating fq_codel qdisc")
 		fqcodel := &tc.FqCodel{}
 		fqcodel.CEThreshold = qd.Specs["cethreshold"]
 		fqcodel.DropBatchSize = qd.Specs["dropbatchsize"]
@@ -122,11 +108,11 @@ func parseQdisc(handle, parent uint32, index uint32, qd Qdisc) (tc.Object, error
 	return qdisc, nil
 }
 
-func parseClass(handle, parent uint32, index uint32, cl Class) (tc.Object, error) {
+func parseClass(handle, parent uint32, index uint32, cl ClassConfig) (tc.Object, error) {
+	logger.Log("msg", "parsing class", "handle", handle, "type", cl.Type)
 	var attrs tc.Attribute
 	switch cl.Type {
 	case "hfsc":
-		logger.Log("msg", "creating hfsc class")
 		hfsc := &tc.Hfsc{
 			Rsc: &tc.ServiceCurve{},
 			Fsc: &tc.ServiceCurve{},
