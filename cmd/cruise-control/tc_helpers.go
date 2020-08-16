@@ -1,38 +1,59 @@
 package main
 
 import (
+	"math"
+
 	"github.com/florianl/go-tc"
 	"golang.org/x/sys/unix"
 )
 
-func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (tc.Object, error) {
-	logger.Log("msg", "parsing qdisc", "handle", handle, "type", qd.Type)
+func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object, error) {
 	var attrs tc.Attribute
 	switch qd.Type {
 	case "fq_codel":
 		fqcodel := &tc.FqCodel{}
-		fqcodel.CEThreshold = qd.Specs["cethreshold"]
-		fqcodel.DropBatchSize = qd.Specs["dropbatchsize"]
-		fqcodel.ECN = qd.Specs["ecn"]
-		fqcodel.Flows = qd.Specs["flows"]
-		fqcodel.Interval = qd.Specs["interval"]
-		fqcodel.Limit = qd.Specs["limit"]
-		fqcodel.MemoryLimit = qd.Specs["memorylimit"]
-		fqcodel.Quantum = qd.Specs["quantum"]
-		fqcodel.Target = qd.Specs["target"]
+		if v, ok := qd.Specs["cethreshold"]; ok {
+			fqcodel.CEThreshold = v
+		}
+		if v, ok := qd.Specs["dropbatchsize"]; ok {
+			fqcodel.DropBatchSize = v
+		}
+		if v, ok := qd.Specs["ecn"]; ok {
+			fqcodel.ECN = v
+		}
+		if v, ok := qd.Specs["flows"]; ok {
+			fqcodel.Flows = v
+		}
+		if v, ok := qd.Specs["interval"]; ok {
+			fqcodel.Interval = v
+		}
+		if v, ok := qd.Specs["limit"]; ok {
+			fqcodel.Limit = v
+		}
+		if v, ok := qd.Specs["memorylimit"]; ok {
+			fqcodel.MemoryLimit = v
+		}
+		if v, ok := qd.Specs["quantum"]; ok {
+			fqcodel.Quantum = v
+		}
+		if v, ok := qd.Specs["target"]; ok {
+			fqcodel.Target = v
+		}
 		attrs = tc.Attribute{
 			Kind:    qd.Type,
 			FqCodel: fqcodel,
 		}
 	case "hfsc":
 		hfsc := &tc.HfscQOpt{}
-		hfsc.DefCls = uint16(qd.Specs["defcls"])
+		if v, ok := qd.Specs["defcls"]; ok {
+			hfsc.DefCls = uint16(v)
+		}
 		attrs = tc.Attribute{
 			Kind:     qd.Type,
 			HfscQOpt: hfsc,
 		}
 	}
-	qdisc := tc.Object{
+	qdisc := &tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: index,
@@ -45,8 +66,7 @@ func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (tc.Object,
 	return qdisc, nil
 }
 
-func parseClass(handle, parent uint32, index uint32, cl ClassConfig) (tc.Object, error) {
-	logger.Log("msg", "parsing class", "handle", handle, "type", cl.Type)
+func parseClass(handle, parent uint32, index uint32, speed float64, cl ClassConfig) (*tc.Object, error) {
 	var attrs tc.Attribute
 	switch cl.Type {
 	case "hfsc":
@@ -61,13 +81,13 @@ func parseClass(handle, parent uint32, index uint32, cl ClassConfig) (tc.Object,
 			rate := params.(map[string]interface{})["rate"].(float64)
 			switch typ {
 			case "sc":
-				SetSC(hfsc, uint32(burst), uint32(delay), uint32(rate))
+				SetSC(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
 			case "ul":
-				SetUL(hfsc, uint32(burst), uint32(delay), uint32(rate))
+				SetUL(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
 			case "ls":
-				SetLS(hfsc, uint32(burst), uint32(delay), uint32(rate))
+				SetLS(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
 			case "rt":
-				SetRT(hfsc, uint32(burst), uint32(delay), uint32(rate))
+				SetRT(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
 			}
 		}
 		attrs = tc.Attribute{
@@ -75,7 +95,7 @@ func parseClass(handle, parent uint32, index uint32, cl ClassConfig) (tc.Object,
 			Hfsc: hfsc,
 		}
 	}
-	class := tc.Object{
+	class := &tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: index,

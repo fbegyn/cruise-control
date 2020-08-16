@@ -57,6 +57,8 @@ func StrHandle(handle string) uint32 {
 			logger.Log("level", "ERROR", "msg", "failed to parse minor part of handle")
 			return 0
 		}
+	default:
+		return 0
 	}
 	return core.BuildHandle(uint32(handleMaj), uint32(handleMin))
 }

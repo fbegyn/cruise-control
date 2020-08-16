@@ -12,14 +12,15 @@ func TestStrHandle(t *testing.T) {
 		handle string
 		want   uint32
 	}{
-		{"root handle", "root", tc.HandleRoot},
-		{"root 0:1", "0:1", 1},
-		{"root 0:f", "0:ffff", 65535},
-		{"root 1:1", "1:1", 65537},
-		{"root :1", ":1", 1},
-		{"root :ffff", ":ffff", 65535},
-		{"root ffff:", "ffff:", 4294901760},
-		{"root 1:", "1:", 65536},
+		{"handle root", "root", tc.HandleRoot},
+		{"handle 0:1", "0:1", 1},
+		{"handle 0:f", "0:ffff", 65535},
+		{"handle 1:1", "1:1", 65537},
+		{"handle :1", ":1", 1},
+		{"handle :ffff", ":ffff", 65535},
+		{"handle ffff:", "ffff:", 4294901760},
+		{"handle help", "help", 0},
+		{"handle interface", "interface", 0},
 	}
 
 	for _, tt := range tests {

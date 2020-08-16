@@ -13,8 +13,8 @@ import (
 type Config struct {
 	Interface string
 
-	DownloadSpeed uint32
-	UploadSpeed   uint32
+	DownloadSpeed float64
+	UploadSpeed   float64
 
 	Qdiscs  map[string]QdiscConfig
 	Classes map[string]ClassConfig
@@ -62,10 +62,10 @@ func main() {
 		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
 	}
 
-	qdMap := make(map[string]tc.Object)
+	qdMap := make(map[string]*tc.Object)
 	for qdName, qd := range conf.Qdiscs {
-		logger.Log("handle", qdName, "type", qd.Type)
-		qdisc, err := parseQdisc(StrHandle(qdName), StrHandle(qd.Parent), uint32(interf.Index), qd)
+		logger.Log("level", "INFO", "msg", "parsing qdisc", "name", qdName, "handle", qd.Handle, "type", qd.Type)
+		qdisc, err := parseQdisc(StrHandle(qd.Handle), StrHandle(qd.Parent), uint32(interf.Index), qd)
 		if err != nil {
 			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
 		} else {
@@ -78,10 +78,10 @@ func main() {
 		//}
 	}
 
-	clMap := make(map[string]tc.Object)
+	clMap := make(map[string]*tc.Object)
 	for clName, cl := range conf.Classes {
-		logger.Log("classid", clName, "type", cl.Type)
-		class, err := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), cl)
+		logger.Log("level", "INFO", "msg", "parsing clas", "name", clName, "handle", cl.ClassID, "type", cl.Type)
+		class, err := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), conf.DownloadSpeed, cl)
 		if err != nil {
 			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
 		} else {
@@ -93,4 +93,48 @@ func main() {
 		//	return
 		//}
 	}
+
+	for k, v := range conf.Classes {
+		p := v.Parent
+		if _, ok := clMap[p]; !ok {
+			continue
+		}
+		clMap[k].Msg.Parent = clMap[p].Msg.Handle
+	}
+
+	for k, v := range conf.Qdiscs {
+		p := v.Parent
+		if _, ok := clMap[p]; !ok {
+			continue
+		}
+		qdMap[k].Msg.Parent = clMap[p].Msg.Handle
+	}
+
+	var nodes []*Node
+	for _, v := range qdMap {
+		n := NewNode(v, "qdisc")
+		nodes = append(nodes, n)
+	}
+	for _, v := range clMap {
+		n := NewNode(v, "class")
+		nodes = append(nodes, n)
+	}
+
+	tree, index := FindRootNode(nodes)
+	nodes = append(nodes[:index], nodes[index+1:]...)
+	leftover := tree.ComposeChildren(nodes)
+	nodes = leftover
+
+	rtnl, err := tc.Open(&tc.Config{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not open rtnetlink socket: %v\n", err)
+		return
+	}
+	defer func() {
+		if err := rtnl.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "could not close rtnetlink socket: %v\n", err)
+		}
+	}()
+
+	tree.ApplyNode(rtnl)
 }
