@@ -43,6 +43,7 @@ var logger log.Logger
 
 func main() {
 	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
