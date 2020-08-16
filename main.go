@@ -12,26 +12,28 @@ import (
 )
 
 type Config struct {
+	Interface string
+
 	DownloadSpeed uint32
 	UploadSpeed   uint32
 
-	Interface string
-
 	Qdiscs  map[string]Qdisc
 	Classes map[string]Class
-	Filters map[string]Filter
+	Filters []Filter
 }
 
 type Qdisc struct {
 	Type   string
+	Handle string
 	Parent string
 	Specs  map[string]uint32
 }
 
 type Class struct {
-	Type   string
-	Parent string
-	Specs  map[string]interface{}
+	Type    string
+	ClassID string
+	Parent  string
+	Specs   map[string]interface{}
 }
 
 type Filter struct {
@@ -62,24 +64,30 @@ func main() {
 		logger.Log("level", "ERROR", "msg", "failed to parse interface")
 	}
 
-	for handle, qd := range t.Qdiscs {
-		logger.Log("handle", handle, "type", qd.Type)
-		parseQdisc(StrHandle(handle), StrHandle(qd.Parent), uint32(interf.Index), qd)
-		//fmt.Println(test)
+	qdMap := make(map[string]tc.Object)
+	for qdName, qd := range t.Qdiscs {
+		logger.Log("handle", qdName, "type", qd.Type)
+		test, _ := parseQdisc(StrHandle(qdName), StrHandle(qd.Parent), uint32(interf.Index), qd)
+		qdMap[qdName] = test
 		//if err := rtnl.Qdisc().Add(&test); err != nil {
 		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
 		//	return
 		//}
 	}
 
-	for handle, cl := range t.Classes {
-		logger.Log("handle", handle, "type", cl.Type)
-		parseClass(StrHandle(handle), StrHandle(cl.Parent), uint32(interf.Index), cl)
+	clMap := make(map[string]tc.Object)
+	for clName, cl := range t.Classes {
+		logger.Log("classid", clName, "type", cl.Type)
+		test, _ := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), cl)
+		clMap[clName] = test
 		//if err := rtnl.Qdisc().Add(&test); err != nil {
 		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
 		//	return
 		//}
 	}
+
+	fmt.Println(qdMap)
+	fmt.Println(clMap)
 }
 
 func parseQdisc(handle, parent uint32, index uint32, qd Qdisc) (tc.Object, error) {
