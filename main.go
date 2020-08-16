@@ -13,6 +13,7 @@ import (
 )
 
 type Config struct {
+<<<<<<< HEAD
 	Interface string `yaml:"interface"`
 
 	DownloadSpeed string `yaml:"download_speed"`
@@ -35,6 +36,30 @@ type ClassConfig struct {
 	Parent   string                 `yaml:"parent"`
 	Specs    map[string]interface{} `yaml:"specs"`
 	Children map[string]ClassConfig `yaml:"children"`
+=======
+	Interface string
+
+	DownloadSpeed uint32
+	UploadSpeed   uint32
+
+	Qdiscs  map[string]Qdisc
+	Classes map[string]Class
+	Filters []Filter
+}
+
+type Qdisc struct {
+	Type   string
+	Handle string
+	Parent string
+	Specs  map[string]uint32
+}
+
+type Class struct {
+	Type    string
+	ClassID string
+	Parent  string
+	Specs   map[string]interface{}
+>>>>>>> config-choice
 }
 
 type Filter struct {
@@ -59,13 +84,30 @@ func main() {
 		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
 	}
 
-	for handle, qd := range conf.Qdiscs {
-		parseQdisc(StrHandle(handle), StrHandle(qd.Parent), uint32(interf.Index), qd)
+	qdMap := make(map[string]tc.Object)
+	for qdName, qd := range t.Qdiscs {
+		logger.Log("handle", qdName, "type", qd.Type)
+		test, _ := parseQdisc(StrHandle(qdName), StrHandle(qd.Parent), uint32(interf.Index), qd)
+		qdMap[qdName] = test
+		//if err := rtnl.Qdisc().Add(&test); err != nil {
+		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
+		//	return
+		//}
 	}
 
-	for handle, cl := range conf.Classes {
-		parseClass(StrHandle(handle), StrHandle(cl.Parent), uint32(interf.Index), cl)
+	clMap := make(map[string]tc.Object)
+	for clName, cl := range t.Classes {
+		logger.Log("classid", clName, "type", cl.Type)
+		test, _ := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), cl)
+		clMap[clName] = test
+		//if err := rtnl.Qdisc().Add(&test); err != nil {
+		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
+		//	return
+		//}
 	}
+
+	fmt.Println(qdMap)
+	fmt.Println(clMap)
 }
 
 func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (tc.Object, error) {
