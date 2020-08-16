@@ -60,9 +60,9 @@ func (tr *Node) ComposeChildren(nodes []*Node) (leftover []*Node) {
 // ApplyNode applies the tc object contained in the node with the replace function. If the object
 // does not exists, it creates it
 func (tr *Node) ApplyNode(tcnl *tc.Tc) {
+	logger.Log("level", "INFO", "handle", tr.Handle, "type", tr.Type, "msg", "applying TC object")
 	switch tr.Type {
 	case "qdisc":
-		fmt.Println(tr.Object.Attribute.FqCodel)
 		if err := tcnl.Qdisc().Replace(tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not assign qdisc to %d: %v\n", tr.Object.Ifindex, err)
 			return

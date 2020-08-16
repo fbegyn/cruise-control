@@ -34,10 +34,10 @@ func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object
 			fqcodel.MemoryLimit = v
 		}
 		if v, ok := qd.Specs["quantum"]; ok {
-			fqcodel.Quantum = v
+			fqcodel.Quantum = v + 1
 		}
 		if v, ok := qd.Specs["target"]; ok {
-			fqcodel.Target = v
+			fqcodel.Target = v + 1
 		}
 		attrs = tc.Attribute{
 			Kind:    qd.Type,
