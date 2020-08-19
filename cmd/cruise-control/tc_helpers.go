@@ -13,31 +13,31 @@ func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object
 	case "fq_codel":
 		fqcodel := &tc.FqCodel{}
 		if v, ok := qd.Specs["cethreshold"]; ok {
-			fqcodel.CEThreshold = v
+			fqcodel.CEThreshold = &v
 		}
 		if v, ok := qd.Specs["dropbatchsize"]; ok {
-			fqcodel.DropBatchSize = v
+			fqcodel.DropBatchSize = &v
 		}
 		if v, ok := qd.Specs["ecn"]; ok {
-			fqcodel.ECN = v
+			fqcodel.ECN = &v
 		}
 		if v, ok := qd.Specs["flows"]; ok {
-			fqcodel.Flows = v
+			fqcodel.Flows = &v
 		}
 		if v, ok := qd.Specs["interval"]; ok {
-			fqcodel.Interval = v
+			fqcodel.Interval = &v
 		}
 		if v, ok := qd.Specs["limit"]; ok {
-			fqcodel.Limit = v
+			fqcodel.Limit = &v
 		}
 		if v, ok := qd.Specs["memorylimit"]; ok {
-			fqcodel.MemoryLimit = v
+			fqcodel.MemoryLimit = &v
 		}
 		if v, ok := qd.Specs["quantum"]; ok {
-			fqcodel.Quantum = v + 1
+			fqcodel.Quantum = &v
 		}
 		if v, ok := qd.Specs["target"]; ok {
-			fqcodel.Target = v + 1
+			fqcodel.Target = &v
 		}
 		attrs = tc.Attribute{
 			Kind:    qd.Type,

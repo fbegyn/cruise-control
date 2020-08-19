@@ -3,7 +3,7 @@ module github.com/fbegyn/cruise-control
 go 1.14
 
 require (
-	github.com/florianl/go-tc v0.0.0-20200808084619-412a139fd321
+	github.com/florianl/go-tc v0.0.0-20200817171446-3782b3ef6a7e
 	github.com/go-kit/kit v0.10.0
 	github.com/spf13/viper v1.7.0
 	golang.org/x/net v0.0.0-20200625001655-4c5254603344 // indirect
