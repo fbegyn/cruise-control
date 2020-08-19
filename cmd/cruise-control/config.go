@@ -2,10 +2,41 @@ package main
 
 import (
 	"math"
+	"net"
 
 	"github.com/florianl/go-tc"
 	"golang.org/x/sys/unix"
 )
+
+func composeQdiscs(qdiscsConfigs map[string]QdiscConfig, interf *net.Interface) map[string]*tc.Object {
+	qdMap := make(map[string]*tc.Object)
+	for qdName, qd := range qdiscsConfigs {
+		logger.Log("level", "INFO", "msg", "parsing qdisc", "name", qdName, "handle", qd.Handle, "type", qd.Type)
+		qdisc, err := parseQdisc(StrHandle(qd.Handle), StrHandle(qd.Parent), uint32(interf.Index), qd)
+		if err != nil {
+			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
+		} else {
+			logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
+			qdMap[qdName] = qdisc
+		}
+	}
+	return qdMap
+}
+
+func composeClasses(classConfigs map[string]ClassConfig, interf *net.Interface, downSpeed float64) map[string]*tc.Object {
+	clMap := make(map[string]*tc.Object)
+	for clName, cl := range classConfigs {
+		logger.Log("level", "INFO", "msg", "parsing clas", "name", clName, "handle", cl.ClassID, "type", cl.Type)
+		class, err := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), downSpeed, cl)
+		if err != nil {
+			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
+		} else {
+			logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
+			clMap[clName] = class
+		}
+	}
+	return clMap
+}
 
 func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object, error) {
 	var attrs tc.Attribute

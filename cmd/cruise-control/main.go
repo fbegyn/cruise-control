@@ -63,37 +63,8 @@ func main() {
 		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
 	}
 
-	qdMap := make(map[string]*tc.Object)
-	for qdName, qd := range conf.Qdiscs {
-		logger.Log("level", "INFO", "msg", "parsing qdisc", "name", qdName, "handle", qd.Handle, "type", qd.Type)
-		qdisc, err := parseQdisc(StrHandle(qd.Handle), StrHandle(qd.Parent), uint32(interf.Index), qd)
-		if err != nil {
-			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
-		} else {
-			logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
-			qdMap[qdName] = qdisc
-		}
-		//if err := rtnl.Qdisc().Add(&test); err != nil {
-		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, conf.Interface, err, test.Attribute.FqCodel)
-		//	return
-		//}
-	}
-
-	clMap := make(map[string]*tc.Object)
-	for clName, cl := range conf.Classes {
-		logger.Log("level", "INFO", "msg", "parsing clas", "name", clName, "handle", cl.ClassID, "type", cl.Type)
-		class, err := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), conf.DownloadSpeed, cl)
-		if err != nil {
-			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
-		} else {
-			logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
-			clMap[clName] = class
-		}
-		//if err := rtnl.Qdisc().Add(&test); err != nil {
-		//	fmt.Fprintf(os.Stderr, "could not assign %s to %s: %v %v\n", handle, t.Interface, err, test.Attribute.FqCodel)
-		//	return
-		//}
-	}
+	qdMap := composeQdiscs(conf.Qdiscs, interf)
+	clMap := composeClasses(conf.Classes, interf, conf.DownloadSpeed)
 
 	for k, v := range conf.Classes {
 		p := v.Parent
@@ -112,12 +83,12 @@ func main() {
 	}
 
 	var nodes []*Node
-	for _, v := range qdMap {
-		n := NewNode(v, "qdisc")
+	for k, v := range qdMap {
+		n := NewNode(v, k, "qdisc")
 		nodes = append(nodes, n)
 	}
-	for _, v := range clMap {
-		n := NewNode(v, "class")
+	for k, v := range clMap {
+		n := NewNode(v, k, "class")
 		nodes = append(nodes, n)
 	}
 
@@ -138,4 +109,5 @@ func main() {
 	}()
 
 	tree.ApplyNode(rtnl)
+	fmt.Println(tree.Children[0])
 }
