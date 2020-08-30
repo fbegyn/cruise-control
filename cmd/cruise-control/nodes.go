@@ -11,7 +11,7 @@ import (
 type Node struct {
 	Name     string
 	Type     string
-	Object   *tc.Object
+	Object   tc.Object
 	Children []*Node
 }
 
@@ -27,7 +27,7 @@ func NewNode(n, typ string) *Node {
 
 // NewNodeWithObject creates a new node with the TC object embedded and sets the type of the node
 // types: qdisc, class and filter
-func NewNodeWithObject(n, typ string, object *tc.Object) *Node {
+func NewNodeWithObject(n, typ string, object tc.Object) *Node {
 	return &Node{
 		Name:     n,
 		Type:     typ,
@@ -125,6 +125,14 @@ func FindRootNode(nodes []*Node) (n *Node, index int) {
 	return nil, 0
 }
 
+// ComposeTree composes the tree based on an array of tree nodes
+func ComposeTree(nodes []*Node) (tr *Node) {
+	tr, index := FindRootNode(nodes)
+	nodes = append(nodes[:index], nodes[index+1:]...)
+	tr.ComposeChildren(nodes)
+	return
+}
+
 // FindChildren looks for the children of a node in a set of TC objects. It returns a slice of the
 // children, the leftover nodes (nodes that are not children) and a boolean to indicate if the node
 // has children or not in the set.
@@ -172,17 +180,17 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) {
 	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "applying TC object")
 	switch tr.Type {
 	case "qdisc":
-		if err := tcnl.Qdisc().Replace(tr.Object); err != nil {
+		if err := tcnl.Qdisc().Replace(&tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not assign qdisc to %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
 	case "class":
-		if err := tcnl.Class().Replace(tr.Object); err != nil {
+		if err := tcnl.Class().Replace(&tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not assign class to %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
 	case "filter":
-		if err := tcnl.Filter().Replace(tr.Object); err != nil {
+		if err := tcnl.Filter().Replace(&tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not assign filter to %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
@@ -199,12 +207,12 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
 	switch tr.Type {
 	case "qdisc":
-		if err := tcnl.Qdisc().Delete(tr.Object); err != nil {
+		if err := tcnl.Qdisc().Delete(&tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not delete qdisc from %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
 	case "class":
-		if err := tcnl.Class().Delete(tr.Object); err != nil {
+		if err := tcnl.Class().Delete(&tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not delete class from %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}

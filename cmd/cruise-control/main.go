@@ -85,15 +85,15 @@ func main() {
 
 	var nodes []*Node
 	for k, v := range qdMap {
-		n := NewNodeWithObject(k, "qdisc", v)
+		n := NewNodeWithObject(k, "qdisc", *v)
 		nodes = append(nodes, n)
 	}
 	for k, v := range clMap {
-		n := NewNodeWithObject(k, "class", v)
+		n := NewNodeWithObject(k, "class", *v)
 		nodes = append(nodes, n)
 	}
 	for k, v := range flMap {
-		n := NewNodeWithObject(k, "filter", v)
+		n := NewNodeWithObject(k, "filter", *v)
 		nodes = append(nodes, n)
 	}
 
@@ -120,4 +120,11 @@ func main() {
 		logger.Log("level", "INFO", "msg", "some nodes left over")
 		fmt.Println(nodes)
 	}
+
+	testNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	testTree := ComposeTree(testNodes)
+	fmt.Println(tree.Object.Attribute.HfscQOpt)
+	fmt.Println(testTree.Object.Attribute.HfscQOpt)
+
+	fmt.Println(tree.equalObject(testTree))
 }

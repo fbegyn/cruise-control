@@ -49,7 +49,7 @@ func TestNewNode(t *testing.T) {
 
 func TestNewNodeWithObject(t *testing.T) {
 
-	testQdisc := &tc.Object{
+	testQdisc := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: 10,
@@ -64,7 +64,7 @@ func TestNewNodeWithObject(t *testing.T) {
 			},
 		},
 	}
-	testQdisc2 := &tc.Object{
+	testQdisc2 := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: 10,
@@ -84,7 +84,7 @@ func TestNewNodeWithObject(t *testing.T) {
 		testName string
 		name     string
 		typ      string
-		object   *tc.Object
+		object   tc.Object
 		expected *Node
 	}{
 		{"TestQdisc", "qdisc_test1", "qdisc", testQdisc, &Node{
