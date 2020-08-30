@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"reflect"
 
 	"github.com/florianl/go-tc"
 )
@@ -10,18 +11,26 @@ import (
 type Node struct {
 	Name     string
 	Type     string
-	Handle   uint32
 	Object   *tc.Object
 	Children []*Node
 }
 
 // NewNode creates a new node with the TC object embedded and sets the type of the node
 // types: qdisc, class and filter
-func NewNode(object *tc.Object, n, typ string) *Node {
+func NewNode(n, typ string) *Node {
 	return &Node{
 		Name:     n,
 		Type:     typ,
-		Handle:   object.Msg.Handle,
+		Children: []*Node{},
+	}
+}
+
+// NewNodeWithObject creates a new node with the TC object embedded and sets the type of the node
+// types: qdisc, class and filter
+func NewNodeWithObject(n, typ string, object *tc.Object) *Node {
+	return &Node{
+		Name:     n,
+		Type:     typ,
 		Object:   object,
 		Children: []*Node{},
 	}
@@ -29,7 +38,7 @@ func NewNode(object *tc.Object, n, typ string) *Node {
 
 // isChildOf checks if the current node is a child of node n
 func (tr *Node) isChildOf(n *Node) bool {
-	if tr.Object.Msg.Parent == n.Handle {
+	if tr.Object.Msg.Parent == n.Object.Handle {
 		return true
 	}
 	return false
@@ -37,7 +46,7 @@ func (tr *Node) isChildOf(n *Node) bool {
 
 // isChild checks if the node n is a child of the current node
 func (tr *Node) isChild(n *Node) bool {
-	if n.Object.Msg.Parent == tr.Handle {
+	if n.Object.Msg.Parent == tr.Object.Handle {
 		return true
 	}
 	return false
@@ -65,6 +74,44 @@ func (tr *Node) addIfChild(n *Node) {
 	if tr.isChildOf(n) {
 		tr.addToNode(n)
 	}
+}
+
+// equalHeader checks if the metadata of 2 nodes are the same
+func (tr *Node) equalHeader(n *Node) bool {
+	if tr.Name == n.Name && tr.Type == n.Type {
+		return true
+	}
+	return false
+}
+
+// equalObject checks if the object of the nodes are the same
+func (tr *Node) equalObject(n *Node) bool {
+	if reflect.DeepEqual(tr, n) {
+		return true
+	}
+	return false
+}
+
+// equalNode checks if the header and object of the nodes are the same
+// it ignores the children, these should be check sperately with the
+// equalChildren function
+func (tr *Node) equalNode(n *Node) bool {
+	if tr.equalHeader(n) && tr.equalObject(n) {
+		return true
+	}
+	return false
+}
+
+// equalChildren check if the children of the nodes are the same
+func (tr *Node) equalChildren(n *Node) bool {
+	for _, child := range tr.Children {
+		for _, peer := range n.Children {
+			if equalChild := child.equalNode(peer); !equalChild {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // FindRootNode finds the TC object with a root handle from a set of TC objects
@@ -113,7 +160,7 @@ func (tr *Node) ComposeChildren(nodes []*Node) (leftover []*Node) {
 		tr.AddChildren(children)
 	}
 	for _, v := range tr.Children {
-		leftover := v.ComposeChildren(nodes)
+		leftover = v.ComposeChildren(nodes)
 		nodes = leftover
 	}
 	return leftover
@@ -122,7 +169,7 @@ func (tr *Node) ComposeChildren(nodes []*Node) (leftover []*Node) {
 // ApplyNode applies the tc object contained in the node with the replace function. If the object
 // does not exists, creates it
 func (tr *Node) ApplyNode(tcnl *tc.Tc) {
-	logger.Log("level", "INFO", "handle", tr.Handle, "type", tr.Type, "msg", "applying TC object")
+	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "applying TC object")
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Replace(tr.Object); err != nil {
@@ -134,6 +181,13 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) {
 			fmt.Fprintf(os.Stderr, "could not assign class to %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
+	case "filter":
+		if err := tcnl.Filter().Replace(tr.Object); err != nil {
+			fmt.Fprintf(os.Stderr, "could not assign filter to %d: %v\n", tr.Object.Ifindex, err)
+			return
+		}
+	default:
+		fmt.Fprintf(os.Stderr, "Unkown TC object type\n")
 	}
 	for _, v := range tr.Children {
 		v.ApplyNode(tcnl)
@@ -142,7 +196,7 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) {
 
 // DeleteNode deletes the parent node (and as a consequence all children nodes will also be deleted)
 func (tr *Node) DeleteNode(tcnl *tc.Tc) {
-	logger.Log("level", "INFO", "handle", tr.Handle, "type", tr.Type, "msg", "deleting TC object")
+	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Delete(tr.Object); err != nil {

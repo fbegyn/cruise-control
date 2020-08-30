@@ -18,7 +18,7 @@ type Config struct {
 
 	Qdiscs  map[string]QdiscConfig
 	Classes map[string]ClassConfig
-	Filters []Filter
+	Filters map[string]FilterConfig
 }
 
 type QdiscConfig struct {
@@ -35,7 +35,7 @@ type ClassConfig struct {
 	Specs   map[string]interface{}
 }
 
-type Filter struct {
+type FilterConfig struct {
 	Type string
 }
 
@@ -65,6 +65,7 @@ func main() {
 
 	qdMap := composeQdiscs(conf.Qdiscs, interf)
 	clMap := composeClasses(conf.Classes, interf, conf.DownloadSpeed)
+	flMap := composeFilters(conf.Classes, interf, conf.DownloadSpeed)
 
 	for k, v := range conf.Classes {
 		p := v.Parent
@@ -84,11 +85,15 @@ func main() {
 
 	var nodes []*Node
 	for k, v := range qdMap {
-		n := NewNode(v, k, "qdisc")
+		n := NewNodeWithObject(k, "qdisc", v)
 		nodes = append(nodes, n)
 	}
 	for k, v := range clMap {
-		n := NewNode(v, k, "class")
+		n := NewNodeWithObject(k, "class", v)
+		nodes = append(nodes, n)
+	}
+	for k, v := range flMap {
+		n := NewNodeWithObject(k, "filter", v)
 		nodes = append(nodes, n)
 	}
 
@@ -109,5 +114,10 @@ func main() {
 	}()
 
 	tree.ApplyNode(rtnl)
-	fmt.Println(tree.Children[0])
+	if len(nodes) == 0 {
+		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
+	} else {
+		logger.Log("level", "INFO", "msg", "some nodes left over")
+		fmt.Println(nodes)
+	}
 }

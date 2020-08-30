@@ -1,8 +1,5 @@
 interface = "test"
 
-downloadSpeed = 10e6
-uploadSpeed = 5e6
-
 [qdiscs."root"]
 type = "hfsc"
 handle = "1:"
@@ -12,37 +9,47 @@ parent = "root"
 
 [qdiscs."prio1"]
 type = "fq_codel"
-handle = "1:2"
-parent = "1:0"
+handle = "11:"
+parent = "prio1"
   [qdiscs."prio1".specs]
-  limit = 15000
-  flows = 2048
-  target = 10
-  interval = 200
+	limit = 1200
+	flow = 65535
+	target = 5000
+	ecn = 0
 
 [qdiscs."prio2"]
 type = "fq_codel"
-handle = "1:3"
-parent = "1:0"
+handle = "12:"
+parent = "prio2"
   [qdiscs."prio2".specs]
-  limit = 15000
-  flows = 2048
-  target = 10
-  interval = 200
+	limit = 1200
+	flow = 65535
+	target = 5000
+	ecn = 0
+
+[qdiscs."other"]
+type = "fq_codel"
+handle = "13:"
+parent = "other"
+  [qdiscs."other".specs]
+	limit = 1200
+	flow = 65535
+	target = 5000
+	ecn = 0
 
 # max interface speed
 [classes."interface"]
 type = "hfsc"
-handell = "1:1"
+classid = "1:1"
 parent = "1:"
 	[classes."interface".specs.sc]
 	burst = 0.0
 	delay = 0
-	rate = 1.0
+	rate = 1e9
 	[classes."interface".specs.ul]
 	burst = 0.0
 	delay = 0
-	rate = 1.0
+	rate = 1e9
 
 # reserved for interface comms
 [classes."reservedComms"]
@@ -52,7 +59,7 @@ parent = "interface"
 	[classes."reservedComms".specs.ls]
 	burst = 0.0
 	delay = 0
-	rate = 0.2
+	rate = 20e6
 
 # max internet speed
 [classes."internet"]
@@ -62,11 +69,11 @@ parent = "interface"
 	[classes."internet".specs.sc]
 	burst = 0.0
 	delay = 0
-	rate = 0.95
+	rate = 200e6
 	[classes."internet".specs.ul]
 	burst = 0.0
 	delay = 0
-	rate = 0.95
+	rate = 200e6
 
 # prio 1
 [classes."prio1"]
@@ -76,7 +83,7 @@ parent = "internet"
 	[classes."prio1".specs.sc]
 	burst = 0.0
 	delay = 0
-	rate = 0.4
+	rate = 100e6
 
 # prio 2
 [classes."prio2"]
@@ -86,7 +93,7 @@ parent = "internet"
 	[classes."prio2".specs.sc]
 	burst = 0.0
 	delay = 60
-	rate = 0.4
+	rate = 100e6
 
 # other
 [classes."other"]
@@ -96,54 +103,4 @@ parent = "internet"
 	[classes."other".specs.ls]
 	burst = 0.0
 	delay = 100
-	rate = 0.2
-
-# tcp 80, 443, 21
-[classes."tcp-80-443-21"]
-type = "hfsc"
-clasid = "1:21"
-parent = "other"
-	[classes."tcp-80-443-21".specs.ls]
-	burst = 0.0
-	delay = 0
-	rate = 0.7
-
-# browsing
-[classes."browsing"]
-type = "hfsc"
-classid = "1:31"
-parent = "tcp-80-443-21"
-	[classes."browsing".specs.sc]
-	burst = 0.0
-	delay = 0
-	rate = 0.7
-
-# downloading
-[classes."downloading"]
-type = "hfsc"
-classid = "1:32"
-parent = "tcp-80-443-21"
-	[classes."downloading".specs.ls]
-	burst = 0.0
-	delay = 10
-	rate = 0.3
-
-# trash
-[classes."trash"]
-type = "hfsc"
-classid = "1:22"
-parent = "other"
-	[classes."trash".specs.ls]
-	burst = 0.0
-	delay = 50
-	rate = 0.1
-
-# crew
-[classes."crew"]
-type = "hfsc"
-classid = "1:23"
-parent = "other"
-	[classes."cew".specs.ls]
-	burst = 0.0
-	delay = 0
-	rate = 0.2
+	rate = 30e6

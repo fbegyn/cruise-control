@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math"
 	"net"
 
 	"github.com/florianl/go-tc"
@@ -27,7 +26,7 @@ func composeClasses(classConfigs map[string]ClassConfig, interf *net.Interface, 
 	clMap := make(map[string]*tc.Object)
 	for clName, cl := range classConfigs {
 		logger.Log("level", "INFO", "msg", "parsing clas", "name", clName, "handle", cl.ClassID, "type", cl.Type)
-		class, err := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), downSpeed, cl)
+		class, err := parseClass(StrHandle(cl.ClassID), StrHandle(cl.Parent), uint32(interf.Index), cl)
 		if err != nil {
 			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
 		} else {
@@ -36,6 +35,21 @@ func composeClasses(classConfigs map[string]ClassConfig, interf *net.Interface, 
 		}
 	}
 	return clMap
+}
+
+func composeFilters(classConfigs map[string]ClassConfig, interf *net.Interface, downSpeed float64) map[string]*tc.Object {
+	flMap := make(map[string]*tc.Object)
+	for filtName, filt := range classConfigs {
+		logger.Log("level", "INFO", "msg", "parsing filter", "name", filtName, "filter", filt)
+		//filter, err := parseFilter()
+		//if err != nil {
+		//	logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
+		//} else {
+		//	logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
+		//	flMap = append(flMap, filter)
+		//}
+	}
+	return flMap
 }
 
 func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object, error) {
@@ -97,7 +111,7 @@ func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object
 	return qdisc, nil
 }
 
-func parseClass(handle, parent uint32, index uint32, speed float64, cl ClassConfig) (*tc.Object, error) {
+func parseClass(handle, parent uint32, index uint32, cl ClassConfig) (*tc.Object, error) {
 	var attrs tc.Attribute
 	switch cl.Type {
 	case "hfsc":
@@ -112,13 +126,13 @@ func parseClass(handle, parent uint32, index uint32, speed float64, cl ClassConf
 			rate := params.(map[string]interface{})["rate"].(float64)
 			switch typ {
 			case "sc":
-				SetSC(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
+				SetSC(hfsc, uint32(burst), uint32(delay), uint32(rate))
 			case "ul":
-				SetUL(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
+				SetUL(hfsc, uint32(burst), uint32(delay), uint32(rate))
 			case "ls":
-				SetLS(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
+				SetLS(hfsc, uint32(burst), uint32(delay), uint32(rate))
 			case "rt":
-				SetRT(hfsc, uint32(math.Floor(burst*speed)), uint32(delay), uint32(math.Floor(rate*speed)))
+				SetRT(hfsc, uint32(burst), uint32(delay), uint32(rate))
 			}
 		}
 		attrs = tc.Attribute{
