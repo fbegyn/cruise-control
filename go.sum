@@ -75,6 +75,8 @@ github.com/florianl/go-tc v0.0.0-20200808084619-412a139fd321 h1:Ijie/bCFzXVlG/gv
 github.com/florianl/go-tc v0.0.0-20200808084619-412a139fd321/go.mod h1:aWdDOHrIpaff8cZp6z7dgJZ1bRsgTS6pXIW0xRdFTK8=
 github.com/florianl/go-tc v0.0.0-20200817171446-3782b3ef6a7e h1:ZMEIEwLFeWiFU5Ug4tsA8+Y2d9ecgQ4IcJe+mCtXs/s=
 github.com/florianl/go-tc v0.0.0-20200817171446-3782b3ef6a7e/go.mod h1:aWdDOHrIpaff8cZp6z7dgJZ1bRsgTS6pXIW0xRdFTK8=
+github.com/florianl/go-tc v0.0.0-20200829133224-8c766abccb3b h1:ji0hsWRMsVp98x1Byc/mSYUMk5eBPGyUH4jyhqELVoU=
+github.com/florianl/go-tc v0.0.0-20200829133224-8c766abccb3b/go.mod h1:aWdDOHrIpaff8cZp6z7dgJZ1bRsgTS6pXIW0xRdFTK8=
 github.com/franela/goblin v0.0.0-20200105215937-c9ffbefa60db/go.mod h1:7dvUGVsVBjqR7JHJk0brhHOZYGmfBYOrK0ZhYMEtBr4=
 github.com/franela/goreq v0.0.0-20171204163338-bcd34c9993f8/go.mod h1:ZhphrRTfi2rbfLwlschooIH4+wKKDR4Pdxhh+TRoA20=
 github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
