@@ -118,13 +118,13 @@ func main() {
 		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
 	} else {
 		logger.Log("level", "INFO", "msg", "some nodes left over")
-		fmt.Println(nodes)
+		fmt.Println(nodes[0])
 	}
 
-	testNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
-	testTree := ComposeTree(testNodes)
-	fmt.Println(tree.Object.Attribute.HfscQOpt)
-	fmt.Println(testTree.Object.Attribute.HfscQOpt)
+	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	systemTree := ComposeTree(systemNodes)
+	fmt.Println(systemTree.equalNode(tree))
 
-	fmt.Println(tree.equalObject(testTree))
+	fmt.Println(tree.CompareTrees(systemTree))
+	tree.CompareReplaceTrees(systemTree, rtnl)
 }

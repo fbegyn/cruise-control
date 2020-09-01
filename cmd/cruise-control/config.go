@@ -104,7 +104,7 @@ func parseQdisc(handle, parent uint32, index uint32, qd QdiscConfig) (*tc.Object
 			Ifindex: index,
 			Handle:  handle,
 			Parent:  parent,
-			Info:    0,
+			Info:    2,
 		},
 		Attribute: attrs,
 	}

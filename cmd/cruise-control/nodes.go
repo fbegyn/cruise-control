@@ -69,6 +69,11 @@ func (tr *Node) addChild(n *Node) {
 	}
 }
 
+// deleteChild delete child at indx from node
+func (tr *Node) deleteChild(index int) {
+	tr.Children = append(tr.Children[:index], tr.Children[index+1:]...)
+}
+
 // addChild add node to node n if child of node n
 func (tr *Node) addIfChild(n *Node) {
 	if tr.isChildOf(n) {
@@ -84,7 +89,17 @@ func (tr *Node) equalHeader(n *Node) bool {
 	return false
 }
 
+// equalMsg checks if the metadata of 2 nodes are the same
+func (tr *Node) equalMsg(n *Node) bool {
+	if tr.Object.Msg.Handle == n.Object.Msg.Handle && tr.Object.Msg.Parent == n.Object.Msg.Parent {
+		return true
+	}
+	return false
+}
+
 // equalObject checks if the object of the nodes are the same
+// TODO: figure out a better compare between node objects
+// returned trees from the kernel are modified with defaults
 func (tr *Node) equalObject(n *Node) bool {
 	if reflect.DeepEqual(tr, n) {
 		return true
@@ -96,7 +111,7 @@ func (tr *Node) equalObject(n *Node) bool {
 // it ignores the children, these should be check sperately with the
 // equalChildren function
 func (tr *Node) equalNode(n *Node) bool {
-	if tr.equalHeader(n) && tr.equalObject(n) {
+	if tr.equalMsg(n) {
 		return true
 	}
 	return false
@@ -112,6 +127,37 @@ func (tr *Node) equalChildren(n *Node) bool {
 		}
 	}
 	return true
+}
+
+// CompareTree
+func (tr *Node) CompareTrees(n *Node) bool {
+	if !tr.equalNode(n) {
+		fmt.Fprintf(os.Stderr, "nodes not equal, should replace the node\n")
+		return false
+	}
+
+	for _, child := range tr.Children {
+		for _, peer := range n.Children {
+			return child.CompareTrees(peer)
+		}
+	}
+	return true
+}
+
+func (tr *Node) CompareReplaceTrees(n *Node, tcnl *tc.Tc) {
+	if !tr.equalNode(n) {
+		fmt.Fprintf(os.Stderr, "nodes are not equal. deleting: %v\n", n)
+		n.DeleteNode(tcnl)
+		tr.ApplyNode(tcnl)
+	}
+
+	for ci, child := range tr.Children {
+		for pi, peer := range n.Children {
+			child.CompareReplaceTrees(peer, tcnl)
+			n.deleteChild(pi)
+		}
+		tr.deleteChild(ci)
+	}
 }
 
 // FindRootNode finds the TC object with a root handle from a set of TC objects
@@ -205,6 +251,9 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) {
 // DeleteNode deletes the parent node (and as a consequence all children nodes will also be deleted)
 func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
+	for _, v := range tr.Children {
+		v.ApplyNode(tcnl)
+	}
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Delete(&tr.Object); err != nil {
@@ -216,8 +265,5 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 			fmt.Fprintf(os.Stderr, "could not delete class from %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
-	}
-	for _, v := range tr.Children {
-		v.ApplyNode(tcnl)
 	}
 }
