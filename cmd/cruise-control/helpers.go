@@ -18,15 +18,15 @@ func StrHandle(handle string) uint32 {
 	}
 
 	// Go on the road to match every possible way of writing a handle
-	full, err := regexp.Compile("([0-9a-fA-F]+:[0-9a-fA-F]+)")
+	full, err := regexp.Compile("[0-9a-fA-F]+:[0-9a-fA-F]+")
 	if err != nil {
 		logger.Log("level", "ERROR", "msg", "failed to compile full regex")
 	}
-	maj, err := regexp.Compile("([0-9a-fA-F]+:)")
+	maj, err := regexp.Compile("[0-9a-fA-F]+:")
 	if err != nil {
 		logger.Log("level", "ERROR", "msg", "failed to compile maj regex")
 	}
-	min, err := regexp.Compile("(:[0-9a-fA-F]+)")
+	min, err := regexp.Compile(":[0-9a-fA-F]+")
 	if err != nil {
 		logger.Log("level", "ERROR", "msg", "failed to compile min regex")
 	}

@@ -81,17 +81,11 @@ func (tr *Node) addIfChild(n *Node) {
 	}
 }
 
-// equalHeader checks if the metadata of 2 nodes are the same
-func (tr *Node) equalHeader(n *Node) bool {
-	if tr.Name == n.Name && tr.Type == n.Type {
-		return true
-	}
-	return false
-}
-
 // equalMsg checks if the metadata of 2 nodes are the same
 func (tr *Node) equalMsg(n *Node) bool {
-	if tr.Object.Msg.Handle == n.Object.Msg.Handle && tr.Object.Msg.Parent == n.Object.Msg.Parent {
+	fmt.Println(tr.Object.Msg.Handle)
+	fmt.Println(n.Object.Msg.Handle)
+	if tr.Object.Handle == n.Object.Handle {
 		return true
 	}
 	return false
@@ -111,10 +105,7 @@ func (tr *Node) equalObject(n *Node) bool {
 // it ignores the children, these should be check sperately with the
 // equalChildren function
 func (tr *Node) equalNode(n *Node) bool {
-	if tr.equalMsg(n) {
-		return true
-	}
-	return false
+	return tr.equalMsg(n)
 }
 
 // equalChildren check if the children of the nodes are the same
@@ -132,7 +123,6 @@ func (tr *Node) equalChildren(n *Node) bool {
 // CompareTree
 func (tr *Node) CompareTrees(n *Node) bool {
 	if !tr.equalNode(n) {
-		fmt.Fprintf(os.Stderr, "nodes not equal, should replace the node\n")
 		return false
 	}
 
@@ -144,19 +134,22 @@ func (tr *Node) CompareTrees(n *Node) bool {
 	return true
 }
 
-func (tr *Node) CompareReplaceTrees(n *Node, tcnl *tc.Tc) {
-	if !tr.equalNode(n) {
-		fmt.Fprintf(os.Stderr, "nodes are not equal. deleting: %v\n", n)
-		n.DeleteNode(tcnl)
-		tr.ApplyNode(tcnl)
-	}
+func (tr *Node) ReplaceTrees(n *Node, tcnl *tc.Tc) {
+	n.DeleteNode(tcnl)
+	tr.ApplyNode(tcnl)
+}
 
-	for ci, child := range tr.Children {
-		for pi, peer := range n.Children {
-			child.CompareReplaceTrees(peer, tcnl)
-			n.deleteChild(pi)
+func (tr *Node) UpdateTrees(n *Node, tcnl *tc.Tc) {
+	if !tr.CompareTrees(n) {
+		tr.ReplaceTrees(n, tcnl)
+		return
+	}
+	for _, child := range tr.Children {
+		for _, peer := range n.Children {
+			if !child.CompareTrees(peer) {
+				child.ReplaceTrees(n, tcnl)
+			}
 		}
-		tr.deleteChild(ci)
 	}
 }
 
@@ -252,7 +245,7 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) {
 func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
 	for _, v := range tr.Children {
-		v.ApplyNode(tcnl)
+		v.DeleteNode(tcnl)
 	}
 	switch tr.Type {
 	case "qdisc":
@@ -263,6 +256,11 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 	case "class":
 		if err := tcnl.Class().Delete(&tr.Object); err != nil {
 			fmt.Fprintf(os.Stderr, "could not delete class from %d: %v\n", tr.Object.Ifindex, err)
+			return
+		}
+	case "filter":
+		if err := tcnl.Filter().Delete(&tr.Object); err != nil {
+			fmt.Fprintf(os.Stderr, "could not delete filter from %d: %v\n", tr.Object.Ifindex, err)
 			return
 		}
 	}

@@ -20,10 +20,10 @@ func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get classes")
 	}
-	filters, err := tcnl.Class().Get(&tc.Msg{
-		Family:  unix.AF_UNSPEC,
-		Ifindex: interf,
-	})
+	//filters, err := tcnl.Class().Get(&tc.Msg{
+	//	Family:  unix.AF_UNSPEC,
+	//	Ifindex: interf,
+	//})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get filters")
 	}
@@ -41,10 +41,10 @@ func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
 		n := NewNodeWithObject(clHandle, "class", cl)
 		tr = append(tr, n)
 	}
-	for _, fl := range filters {
-		flHandle := fmt.Sprintf("%d", fl.Handle)
-		n := NewNodeWithObject(flHandle, "filter", fl)
-		tr = append(tr, n)
-	}
+	//for _, fl := range filters {
+	//	flHandle := fmt.Sprintf("%d", fl.Handle)
+	//	n := NewNodeWithObject(flHandle, "filter", fl)
+	//	tr = append(tr, n)
+	//}
 	return
 }

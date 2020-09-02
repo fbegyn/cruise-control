@@ -22,7 +22,7 @@ func composeQdiscs(qdiscsConfigs map[string]QdiscConfig, interf *net.Interface) 
 	return qdMap
 }
 
-func composeClasses(classConfigs map[string]ClassConfig, interf *net.Interface, downSpeed float64) map[string]*tc.Object {
+func composeClasses(classConfigs map[string]ClassConfig, interf *net.Interface) map[string]*tc.Object {
 	clMap := make(map[string]*tc.Object)
 	for clName, cl := range classConfigs {
 		logger.Log("level", "INFO", "msg", "parsing clas", "name", clName, "handle", cl.ClassID, "type", cl.Type)
@@ -30,16 +30,16 @@ func composeClasses(classConfigs map[string]ClassConfig, interf *net.Interface, 
 		if err != nil {
 			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
 		} else {
-			logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
+			logger.Log("level", "INFO", "msg", "class parsed and adding to map")
 			clMap[clName] = class
 		}
 	}
 	return clMap
 }
 
-func composeFilters(classConfigs map[string]ClassConfig, interf *net.Interface, downSpeed float64) map[string]*tc.Object {
+func composeFilters(filterConfigs map[string]FilterConfig, interf *net.Interface) map[string]*tc.Object {
 	flMap := make(map[string]*tc.Object)
-	for filtName, filt := range classConfigs {
+	for filtName, filt := range filterConfigs {
 		logger.Log("level", "INFO", "msg", "parsing filter", "name", filtName, "filter", filt)
 		//filter, err := parseFilter()
 		//if err != nil {

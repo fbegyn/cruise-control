@@ -55,7 +55,6 @@ func main() {
 
 	conf := Config{}
 	viper.Unmarshal(&conf)
-	fmt.Println(conf)
 
 	// determine the interface for cruise control to run on
 	interf, err := net.InterfaceByName(conf.Interface)
@@ -64,8 +63,8 @@ func main() {
 	}
 
 	qdMap := composeQdiscs(conf.Qdiscs, interf)
-	clMap := composeClasses(conf.Classes, interf, conf.DownloadSpeed)
-	flMap := composeFilters(conf.Classes, interf, conf.DownloadSpeed)
+	clMap := composeClasses(conf.Classes, interf)
+	flMap := composeFilters(conf.Filters, interf)
 
 	for k, v := range conf.Classes {
 		p := v.Parent
@@ -113,18 +112,20 @@ func main() {
 		}
 	}()
 
-	tree.ApplyNode(rtnl)
 	if len(nodes) == 0 {
 		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
 	} else {
 		logger.Log("level", "INFO", "msg", "some nodes left over")
-		fmt.Println(nodes[0])
 	}
 
 	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
 	systemTree := ComposeTree(systemNodes)
-	fmt.Println(systemTree.equalNode(tree))
 
+	fmt.Printf("systemTree:\n%v\n", systemTree.Object.Msg)
+	fmt.Printf("Tree:\n%v\n", tree.Object.Msg)
+
+	logger.Log("level", "INFO", "msg", "applying new config")
 	fmt.Println(tree.CompareTrees(systemTree))
-	tree.CompareReplaceTrees(systemTree, rtnl)
+	tree.UpdateTrees(systemTree, rtnl)
+
 }
