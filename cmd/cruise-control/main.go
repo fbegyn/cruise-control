@@ -121,11 +121,10 @@ func main() {
 	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
 	systemTree := ComposeTree(systemNodes)
 
-	fmt.Printf("systemTree:\n%v\n", systemTree.Object.Msg)
-	fmt.Printf("Tree:\n%v\n", tree.Object.Msg)
-
-	logger.Log("level", "INFO", "msg", "applying new config")
-	fmt.Println(tree.CompareTrees(systemTree))
-	tree.UpdateTrees(systemTree, rtnl)
-
+	if !systemTree.CompareTree(tree) {
+		logger.Log("level", "INFO", "msg", "applying new config")
+		systemTree.UpdateTree(tree, rtnl)
+	} else {
+		logger.Log("level", "INFO", "msg", "config up to date")
+	}
 }

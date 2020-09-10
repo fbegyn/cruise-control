@@ -33,7 +33,7 @@ func TestNewNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			result := NewNode(tt.name, tt.typ)
-			if !result.equalHeader(tt.expected) {
+			if !result.equalNode(tt.expected) {
 				t.Errorf("Failed to create node with correct header. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
 				)
@@ -97,7 +97,7 @@ func TestNewNodeWithObject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			result := NewNodeWithObject(tt.name, tt.typ, tt.object)
-			if !result.equalHeader(tt.expected) {
+			if !result.equalNode(tt.expected) {
 				t.Errorf("Failed to create node with correct header. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
 				)

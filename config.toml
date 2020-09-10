@@ -62,18 +62,18 @@ parent = "interface"
 	rate = 25e5
 
 # max internet speed
-[classes."internet"]
-type = "hfsc"
-classid = "1:2"
-parent = "interface"
-	[classes."internet".specs.sc]
-	burst = 0.0
-	delay = 0
-	rate = 25e6
-	[classes."internet".specs.ul]
-	burst = 0.0
-	delay = 0
-	rate = 25e6
+#[classes."internet"]
+#type = "hfsc"
+#classid = "1:2"
+#parent = "interface"
+#	[classes."internet".specs.sc]
+#	burst = 0.0
+#	delay = 0
+#	rate = 25e6
+#	[classes."internet".specs.ul]
+#	burst = 0.0
+#	delay = 0
+#	rate = 25e6
 
 # prio 1
 [classes."prio1"]
@@ -96,11 +96,11 @@ parent = "internet"
 	rate = 125e5
 
 # other
-#[classes."other"]
-#type = "hfsc"
-#classid = "1:13"
-#parent = "internet"
-#	[classes."other".specs.ls]
-#	burst = 0.0
-#	delay = 100
-#	rate = 375e4
+[classes."other"]
+type = "hfsc"
+classid = "1:13"
+parent = "internet"
+	[classes."other".specs.ls]
+	burst = 0.0
+	delay = 100
+	rate = 375e4

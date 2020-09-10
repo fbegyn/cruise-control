@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"reflect"
 
 	"github.com/florianl/go-tc"
 )
@@ -83,72 +82,87 @@ func (tr *Node) addIfChild(n *Node) {
 
 // equalMsg checks if the metadata of 2 nodes are the same
 func (tr *Node) equalMsg(n *Node) bool {
-	fmt.Println(tr.Object.Msg.Handle)
-	fmt.Println(n.Object.Msg.Handle)
-	if tr.Object.Handle == n.Object.Handle {
-		return true
-	}
-	return false
+	return tr.Object.Handle == n.Object.Handle
 }
 
 // equalObject checks if the object of the nodes are the same
 // TODO: figure out a better compare between node objects
 // returned trees from the kernel are modified with defaults
-func (tr *Node) equalObject(n *Node) bool {
-	if reflect.DeepEqual(tr, n) {
-		return true
-	}
-	return false
+func (tr *Node) equalKind(n *Node) bool {
+	return tr.Object.Attribute.Kind == n.Object.Attribute.Kind
 }
 
 // equalNode checks if the header and object of the nodes are the same
 // it ignores the children, these should be check sperately with the
 // equalChildren function
 func (tr *Node) equalNode(n *Node) bool {
-	return tr.equalMsg(n)
+	return (tr.equalMsg(n) && tr.equalKind(n))
 }
 
 // equalChildren check if the children of the nodes are the same
 func (tr *Node) equalChildren(n *Node) bool {
+	equalChildren := true
 	for _, child := range tr.Children {
+		equalChild := false
 		for _, peer := range n.Children {
-			if equalChild := child.equalNode(peer); !equalChild {
-				return false
+			if equalChild = child.equalNode(peer); equalChild {
+				break
 			}
 		}
+		equalChildren = equalChildren && equalChild
 	}
-	return true
+	return equalChildren
 }
 
-// CompareTree
-func (tr *Node) CompareTrees(n *Node) bool {
+// CompareTree validates if tr matches the tree of argument n
+func (tr *Node) CompareTree(n *Node) bool {
 	if !tr.equalNode(n) {
 		return false
 	}
 
-	for _, child := range tr.Children {
-		for _, peer := range n.Children {
-			return child.CompareTrees(peer)
-		}
+	if len(tr.Children) != len(n.Children) {
+		return false
 	}
-	return true
+
+	equalChildren := true
+	for _, child := range tr.Children {
+		equalChild := false
+		for _, peer := range n.Children {
+			if equalChild = child.CompareTree(peer); equalChild {
+				break
+			}
+		}
+		equalChildren = equalChildren && equalChild
+	}
+	return equalChildren
 }
 
-func (tr *Node) ReplaceTrees(n *Node, tcnl *tc.Tc) {
+func (tr *Node) ReplaceTree(n *Node, tcnl *tc.Tc) {
+	fmt.Println(n)
 	n.DeleteNode(tcnl)
 	tr.ApplyNode(tcnl)
 }
 
-func (tr *Node) UpdateTrees(n *Node, tcnl *tc.Tc) {
-	if !tr.CompareTrees(n) {
-		tr.ReplaceTrees(n, tcnl)
+// FindPeer finds the child of another node that matches the current selected node. Can be used to
+// easily check if 2 nodes share the same child. Return the node and a boolean. If true, the returned
+// node is the peer. If false, the returned node is the child itself
+// TODO: implement the function
+func (tr *Node) FindPeer(child, n *Node) (*Node, bool) {
+	return nil, false
+}
+
+func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
+	if !tr.equalNode(n) {
+		tr.ReplaceTree(n, tcnl)
 		return
 	}
+
 	for _, child := range tr.Children {
 		for _, peer := range n.Children {
-			if !child.CompareTrees(peer) {
-				child.ReplaceTrees(n, tcnl)
+			if child.CompareTree(peer) {
+				break
 			}
+
 		}
 	}
 }
@@ -243,10 +257,10 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) {
 
 // DeleteNode deletes the parent node (and as a consequence all children nodes will also be deleted)
 func (tr *Node) DeleteNode(tcnl *tc.Tc) {
-	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
 	for _, v := range tr.Children {
 		v.DeleteNode(tcnl)
 	}
+	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Delete(&tr.Object); err != nil {
