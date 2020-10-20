@@ -38,9 +38,14 @@ func TestNewNode(t *testing.T) {
 					tt.name, tt.typ, result, tt.expected,
 				)
 			}
-			if !result.equalObject(tt.expected) {
-				t.Errorf("Failed to create node with correct object. name: %s and type: %s\nGot: %v\nExpected: %v\n",
-					tt.name, tt.typ, result, tt.expected,
+			if !result.equalMsg(tt.expected) {
+				t.Errorf("Failed to create an object with the same Msg. name: %s and type: %s\nGot: %v\nExpected: %v\n",
+					tt.name, tt.typ, result.Object, tt.expected.Object,
+				)
+			}
+			if !result.equalKind(tt.expected) {
+				t.Errorf("Failed to create an object with the same kind. name: %s and type: %s\nGot: %v\nExpected: %v\n",
+					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)
 			}
 		})
@@ -102,8 +107,13 @@ func TestNewNodeWithObject(t *testing.T) {
 					tt.name, tt.typ, result, tt.expected,
 				)
 			}
-			if !result.equalObject(tt.expected) {
-				t.Errorf("Failed to create node with correct object. name: %s and type: %s\nGot: %v\nExpected: %v\n",
+			if !result.equalMsg(tt.expected) {
+				t.Errorf("Failed to create an object with the same Msg. name: %s and type: %s\nGot: %v\nExpected: %v\n",
+					tt.name, tt.typ, result.Object, tt.expected.Object,
+				)
+			}
+			if !result.equalKind(tt.expected) {
+				t.Errorf("Failed to create an object with the same kind. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)
 			}
