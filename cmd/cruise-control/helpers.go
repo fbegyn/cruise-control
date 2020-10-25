@@ -1,7 +1,7 @@
 package main
 
 import (
-	"regexp"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -17,48 +17,16 @@ func StrHandle(handle string) uint32 {
 		return tc.HandleRoot
 	}
 
-	// Go on the road to match every possible way of writing a handle
-	full, err := regexp.Compile("[0-9a-fA-F]+:[0-9a-fA-F]+")
-	if err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to compile full regex")
-	}
-	maj, err := regexp.Compile("[0-9a-fA-F]+:")
-	if err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to compile maj regex")
-	}
-	min, err := regexp.Compile(":[0-9a-fA-F]+")
-	if err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to compile min regex")
-	}
-
 	var handleMaj, handleMin int64
-	t := strings.Split(handle, ":")
-	switch true {
-	case full.MatchString(handle):
-		handleMaj, err = strconv.ParseInt(t[0], 16, 32)
-		if err != nil {
-			logger.Log("level", "ERROR", "msg", "failed to parse major part of handle")
-			return 0
-		}
-		handleMin, err = strconv.ParseInt(t[1], 16, 32)
-		if err != nil {
-			logger.Log("level", "ERROR", "msg", "failed to parse minor part of handle")
-			return 0
-		}
-	case maj.MatchString(handle):
-		handleMaj, err = strconv.ParseInt(t[0], 16, 32)
-		if err != nil {
-			logger.Log("level", "ERROR", "msg", "failed to parse major part of handle")
-			return 0
-		}
-	case min.MatchString(handle):
-		handleMin, err = strconv.ParseInt(t[1], 16, 32)
-		if err != nil {
-			logger.Log("level", "ERROR", "msg", "failed to parse minor part of handle")
-			return 0
-		}
-	default:
-		return 0
+	var err error
+	handleParts := strings.Split(handle, ":")
+	handleMaj, err = strconv.ParseInt(handleParts[0], 16, 32)
+	if err != nil {
+		fmt.Printf("failed to parse the major part of the handle: %s\n", err)
+	}
+	handleMin, err = strconv.ParseInt(handleParts[1], 16, 32)
+	if err != nil {
+		fmt.Printf("failed to parse the minor part of the handle: %s\n", err)
 	}
 	return core.BuildHandle(uint32(handleMaj), uint32(handleMin))
 }

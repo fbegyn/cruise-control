@@ -10,6 +10,7 @@ import (
 type Node struct {
 	Name     string
 	Type     string
+	Parent   string
 	Object   tc.Object
 	Children []*Node
 }
@@ -173,7 +174,6 @@ func FindRootNode(nodes []*Node) (n *Node, index int) {
 		if v.Object.Msg.Parent == tc.HandleRoot {
 			return v, i
 		}
-		continue
 	}
 	return nil, 0
 }
