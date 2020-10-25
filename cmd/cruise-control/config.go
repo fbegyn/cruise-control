@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/florianl/go-tc"
+	"golang.org/x/sys/unix"
 )
 
 // Parse the qdiscs handles into their uint32 form. Returns a map that can be
@@ -74,7 +76,7 @@ func parseQdiscParents(handleMap map[string]uint32, config map[string]QdiscConfi
 			parentMap[k] = val
 			continue
 		} else {
-			return nil, fmt.Errorf("failed to lookup parent, are you sure of it?")
+			return nil, fmt.Errorf("failed to lookup parent for %s, are you sure of it?", k)
 		}
 	}
 	return parentMap, nil
@@ -93,7 +95,7 @@ func parseClassParents(handleMap map[string]uint32, config map[string]ClassConfi
 			parentMap[k] = val
 			continue
 		} else {
-			return nil, fmt.Errorf("failed to lookup parent, are you sure of it?")
+			return nil, fmt.Errorf("failed to lookup parent for %s, are you sure of it?", k)
 		}
 	}
 	return parentMap, nil
@@ -117,34 +119,114 @@ func parseParents(handleMap map[string]uint32, conf Config) (map[string]uint32, 
 	return h1, nil
 }
 
-func composeQdiscs(qdiscsConfigs map[string]QdiscConfig) map[string]*tc.Attribute {
-	qdMap := make(map[string]*tc.Attribute)
+// looks up the handle and parent of an object and returns the uint32 forms
+func lookupObjectHanleParent(handleMap, parentMap map[string]uint32, object string) (handle, parent uint32, found bool) {
+	if h, present := handleMap[object]; present {
+		handle = h
+	} else {
+		return 0, 0, false
+	}
+	if p, present := parentMap[object]; present {
+		parent = p
+	} else {
+		return 0, 0, false
+	}
+	found = true
+	return
+}
+
+// constructs a map of tc.Objects of all the qdiscs defined in the configuration
+func composeQdiscs(
+	handleMap, parentMap map[string]uint32,
+	qdiscsConfigs map[string]QdiscConfig,
+	interf *net.Interface,
+) (map[string]*tc.Object, error) {
+	// construct the map with tc objects
+	qdMap := make(map[string]*tc.Object)
+
+	// iterate over all qdiscs defined in the config
 	for qdName, qd := range qdiscsConfigs {
+		// lookup the handle and parent of the object. If we can't find it, we
+		// skip this object and log it
+		handle, parent, found := lookupObjectHanleParent(handleMap, parentMap, qdName)
+		if !found {
+			logger.Log("level", "WARN", "msg", "failed to lookup handle and/or parent of %v", qdName)
+			continue
+		}
+		// tc.Msg object for the object. We can construct this purely of the
+		// information we already have.
+		msg := tc.Msg{
+			Family:  unix.AF_UNSPEC,
+			Ifindex: uint32(interf.Index),
+			Handle:  handle,
+			Parent:  parent,
+		}
+
+		// Find out the attributes of the qdisc in question. We error out of here
+		// when a qdisc can't be parsed, since we assume there is an error in the
+		// config at that point.
 		logger.Log("level", "INFO", "msg", "parsing qdisc", "name", qdName, "handle", qd.Handle, "type", qd.Type)
 		qdiscAttrs, err := parseQdiscAttrs(qd)
 		if err != nil {
 			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
-		} else {
-			logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
-			qdMap[qdName] = qdiscAttrs
+			return nil, fmt.Errorf("a qdisc failed to be parsed, maybe double check the config for %s", qdName)
 		}
+		logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
+
+		// construct the qdisc
+		qdisc := &tc.Object{
+			Msg:       msg,
+			Attribute: qdiscAttrs,
+		}
+		qdMap[qdName] = qdisc
 	}
-	return qdMap
+	return qdMap, nil
 }
 
-func composeClasses(classConfigs map[string]ClassConfig) map[string]*tc.Attribute {
-	clMap := make(map[string]*tc.Attribute)
+// constructs a map of tc.Objects of all the classes defined in the configuration
+func composeClasses(
+	handleMap, parentMap map[string]uint32,
+	classConfigs map[string]ClassConfig,
+	interf *net.Interface,
+) (map[string]*tc.Object, error) {
+	clMap := make(map[string]*tc.Object)
 	for clName, cl := range classConfigs {
+
+		// lookup the handle and parent of the object. If we can't find it, we
+		// skip this object and log it
+		handle, parent, found := lookupObjectHanleParent(handleMap, parentMap, clName)
+		if !found {
+			logger.Log("level", "WARN", "msg", "failed to lookup handle and/or parent of %v", clName)
+			continue
+		}
+		// tc.Msg object for the object. We can construct this purely of the
+		// information we already have.
+		msg := tc.Msg{
+			Family:  unix.AF_UNSPEC,
+			Ifindex: uint32(interf.Index),
+			Handle:  handle,
+			Parent:  parent,
+		}
+
+		// Find out the attributes of the class in question. We error out of here
+		// when a class can't be parsed, since we assume there is an error in the
+		// config at that point.
 		logger.Log("level", "INFO", "msg", "parsing clas", "name", clName, "handle", cl.ClassID, "type", cl.Type)
 		classAttrs, err := parseClassAttrs(cl)
 		if err != nil {
 			logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
-		} else {
-			logger.Log("level", "INFO", "msg", "class parsed and adding to map")
-			clMap[clName] = classAttrs
+			return nil, fmt.Errorf("a qdisc failed to be parsed, maybe double check the config for %s", clName)
 		}
+		logger.Log("level", "INFO", "msg", "class parsed and adding to map")
+
+		// construct the qdisc
+		class := &tc.Object{
+			Msg:       msg,
+			Attribute: classAttrs,
+		}
+		clMap[clName] = class
 	}
-	return clMap
+	return clMap, nil
 }
 
 func composeFilters(filterConfigs map[string]FilterConfig) map[string]*tc.Object {
@@ -162,7 +244,7 @@ func composeFilters(filterConfigs map[string]FilterConfig) map[string]*tc.Object
 	return flMap
 }
 
-func parseQdiscAttrs(qd QdiscConfig) (attrs *tc.Attribute, err error) {
+func parseQdiscAttrs(qd QdiscConfig) (attrs tc.Attribute, err error) {
 	switch qd.Type {
 	case "fq_codel":
 		fqcodel := &tc.FqCodel{}
@@ -193,7 +275,7 @@ func parseQdiscAttrs(qd QdiscConfig) (attrs *tc.Attribute, err error) {
 		if v, ok := qd.Specs["target"]; ok {
 			fqcodel.Target = &v
 		}
-		attrs = &tc.Attribute{
+		attrs = tc.Attribute{
 			Kind:    qd.Type,
 			FqCodel: fqcodel,
 		}
@@ -202,7 +284,7 @@ func parseQdiscAttrs(qd QdiscConfig) (attrs *tc.Attribute, err error) {
 		if v, ok := qd.Specs["defcls"]; ok {
 			hfsc.DefCls = uint16(v)
 		}
-		attrs = &tc.Attribute{
+		attrs = tc.Attribute{
 			Kind:     qd.Type,
 			HfscQOpt: hfsc,
 		}
@@ -210,7 +292,7 @@ func parseQdiscAttrs(qd QdiscConfig) (attrs *tc.Attribute, err error) {
 	return attrs, nil
 }
 
-func parseClassAttrs(cl ClassConfig) (attrs *tc.Attribute, err error) {
+func parseClassAttrs(cl ClassConfig) (attrs tc.Attribute, err error) {
 	switch cl.Type {
 	case "hfsc":
 		hfsc := &tc.Hfsc{
@@ -233,7 +315,7 @@ func parseClassAttrs(cl ClassConfig) (attrs *tc.Attribute, err error) {
 				SetRT(hfsc, uint32(burst), uint32(delay), uint32(rate))
 			}
 		}
-		attrs = &tc.Attribute{
+		attrs = tc.Attribute{
 			Kind: cl.Type,
 			Hfsc: hfsc,
 		}

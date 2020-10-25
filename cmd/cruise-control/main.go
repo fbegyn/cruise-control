@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 
+	"github.com/florianl/go-tc"
 	"github.com/go-kit/kit/log"
 	"github.com/spf13/viper"
 )
@@ -56,99 +58,79 @@ func main() {
 	viper.Unmarshal(&conf)
 
 	// determine the interface for cruise control to run on
-	//interf, err := net.InterfaceByName(conf.Interface)
-	//if err != nil {
-	//	logger.Log("level", "ERROR", "msg", "failed to get interface from name")
-	//}
-
-	/* we first need to parse all the attributes of the components into a map of
-	* attributes and identifiers. This is required because the parent of each
-	* component can be any of the other types. The choice is:
-	* 1. Have the requirement of having unique names for each object
-	* 2. Not have unique names but then seperate maps need to be searched through
-	* to find the parents, complicating things unnecesarily since the same
-	* identifiers can be found */
-
-	h1, err := parseHandles(conf)
+	interf, err := net.InterfaceByName(conf.Interface)
 	if err != nil {
+		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
+	}
+
+	// compose a map of all handles (also classIDs) to easily lookup the qdisc or
+	// class when needed
+	handleMap, err := parseHandles(conf)
+	if err != nil {
+		logger.Log("error", err)
 		os.Exit(8)
 	}
-	fmt.Println(h1)
-
-	h, err := parseParents(h1, conf)
+	// compose a map of all parent of the object to easily look them up later
+	parentMap, err := parseParents(handleMap, conf)
 	if err != nil {
+		logger.Log("error", err)
 		os.Exit(9)
 	}
-	fmt.Println(h)
 
-	os.Exit(10)
+	// compose TC objects into maps of each type. we could also create a single
+	// map of tc.Objects but that what probably include som wizardly or adding a
+	// field to the objects configs to determine the type.
+	qdMap, _ := composeQdiscs(handleMap, parentMap, conf.Qdiscs, interf)
+	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
+	//flMap, _ := composeFilters(handleMap, parentMap, conf.Filters, interf)
 
-	// compose TC objects into maps of each type
-	//qdMap := composeQdiscs(conf.Qdiscs)
-	//clMap := composeClasses(conf.Classes)
-	//flMap := composeFilters(conf.Filters)
+	// constrcut tc objects into an array
+	var nodes []*Node
+	for k, v := range qdMap {
+		n := NewNodeWithObject(k, "qdisc", *v)
+		nodes = append(nodes, n)
+	}
+	for k, v := range clMap {
+		n := NewNodeWithObject(k, "class", *v)
+		nodes = append(nodes, n)
+	}
 
-	// compose the parents of each object in the tree
-	//for k, v := range conf.Classes {
-	//	p := v.Parent
-	//	if _, ok := clMap[p]; !ok {
-	//		continue
-	//	}
-	//	clMap[k] = clMap[p].Msg.Handle
-	//}
-	//for k, v := range conf.Qdiscs {
-	//	p := v.Parent
-	//	if _, ok := clMap[p]; !ok {
-	//		continue
-	//	}
-	//	qdMap[k].Msg.Parent = clMap[p].Msg.Handle
-	//}
+	// construct the TC tree
+	tree, index := FindRootNode(nodes)
+	nodes = append(nodes[:index], nodes[index+1:]...)
+	leftover := tree.ComposeChildren(nodes)
+	nodes = leftover
 
-	//// constrcut tc objects into an array
-	//var nodes []*Node
-	//for k, v := range qdMap {
-	//	n := NewNodeWithObject(k, "qdisc", *v)
-	//	nodes = append(nodes, n)
-	//}
-	//for k, v := range clMap {
-	//	n := NewNodeWithObject(k, "class", *v)
-	//	nodes = append(nodes, n)
-	//}
-	//for k, v := range flMap {
-	//	n := NewNodeWithObject(k, "filter", *v)
-	//	nodes = append(nodes, n)
-	//}
+	rtnl, err := tc.Open(&tc.Config{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not open rtnetlink socket: %v\n", err)
+		return
+	}
+	defer func() {
+		if err := rtnl.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "could not close rtnetlink socket: %v\n", err)
+		}
+	}()
 
-	//// construct the TC tree
-	//tree, index := FindRootNode(nodes)
-	//nodes = append(nodes[:index], nodes[index+1:]...)
-	//leftover := tree.ComposeChildren(nodes)
-	//nodes = leftover
+	if len(nodes) == 0 {
+		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
+	} else {
+		logger.Log("level", "INFO", "msg", "some nodes left over")
+	}
 
-	//rtnl, err := tc.Open(&tc.Config{})
-	//if err != nil {
-	//	fmt.Fprintf(os.Stderr, "could not open rtnetlink socket: %v\n", err)
-	//	return
-	//}
-	//defer func() {
-	//	if err := rtnl.Close(); err != nil {
-	//		fmt.Fprintf(os.Stderr, "could not close rtnetlink socket: %v\n", err)
-	//	}
-	//}()
+	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	if len(systemNodes) > 0 {
+		systemTree, index := FindRootNode(systemNodes)
+		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
+		_ = systemTree.ComposeChildren(systemNodes)
+		if !systemTree.CompareTree(tree) {
+			logger.Log("level", "INFO", "msg", "applying new config")
+			systemTree.UpdateTree(tree, rtnl)
+		} else {
+			logger.Log("level", "INFO", "msg", "config up to date")
+		}
+	} else {
+		tree.ApplyNode(rtnl)
+	}
 
-	//if len(nodes) == 0 {
-	//	logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
-	//} else {
-	//	logger.Log("level", "INFO", "msg", "some nodes left over")
-	//}
-
-	//systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
-	//systemTree := ComposeTree(systemNodes)
-
-	//if !systemTree.CompareTree(tree) {
-	//	logger.Log("level", "INFO", "msg", "applying new config")
-	//	systemTree.UpdateTree(tree, rtnl)
-	//} else {
-	//	logger.Log("level", "INFO", "msg", "config up to date")
-	//}
 }

@@ -152,6 +152,7 @@ func (tr *Node) FindPeer(child, n *Node) (*Node, bool) {
 	return nil, false
 }
 
+// TODO: implement function
 func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 	if !tr.equalNode(n) {
 		tr.ReplaceTree(n, tcnl)
@@ -163,7 +164,7 @@ func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 			if child.CompareTree(peer) {
 				break
 			}
-
+			child.ReplaceTree(peer, tcnl)
 		}
 	}
 }
