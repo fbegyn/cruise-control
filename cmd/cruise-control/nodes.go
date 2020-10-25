@@ -10,6 +10,7 @@ import (
 type Node struct {
 	Name     string
 	Type     string
+	Parent   string
 	Object   tc.Object
 	Children []*Node
 }
@@ -151,6 +152,7 @@ func (tr *Node) FindPeer(child, n *Node) (*Node, bool) {
 	return nil, false
 }
 
+// TODO: implement function
 func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 	if !tr.equalNode(n) {
 		tr.ReplaceTree(n, tcnl)
@@ -162,7 +164,7 @@ func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 			if child.CompareTree(peer) {
 				break
 			}
-
+			child.ReplaceTree(peer, tcnl)
 		}
 	}
 }
@@ -173,7 +175,6 @@ func FindRootNode(nodes []*Node) (n *Node, index int) {
 		if v.Object.Msg.Parent == tc.HandleRoot {
 			return v, i
 		}
-		continue
 	}
 	return nil, 0
 }

@@ -36,7 +36,8 @@ type ClassConfig struct {
 }
 
 type FilterConfig struct {
-	Type string
+	Type     string
+	FilterID string
 }
 
 var logger log.Logger
@@ -62,26 +63,28 @@ func main() {
 		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
 	}
 
-	qdMap := composeQdiscs(conf.Qdiscs, interf)
-	clMap := composeClasses(conf.Classes, interf)
-	flMap := composeFilters(conf.Filters, interf)
-
-	for k, v := range conf.Classes {
-		p := v.Parent
-		if _, ok := clMap[p]; !ok {
-			continue
-		}
-		clMap[k].Msg.Parent = clMap[p].Msg.Handle
+	// compose a map of all handles (also classIDs) to easily lookup the qdisc or
+	// class when needed
+	handleMap, err := parseHandles(conf)
+	if err != nil {
+		logger.Log("error", err)
+		os.Exit(8)
+	}
+	// compose a map of all parent of the object to easily look them up later
+	parentMap, err := parseParents(handleMap, conf)
+	if err != nil {
+		logger.Log("error", err)
+		os.Exit(9)
 	}
 
-	for k, v := range conf.Qdiscs {
-		p := v.Parent
-		if _, ok := clMap[p]; !ok {
-			continue
-		}
-		qdMap[k].Msg.Parent = clMap[p].Msg.Handle
-	}
+	// compose TC objects into maps of each type. we could also create a single
+	// map of tc.Objects but that what probably include som wizardly or adding a
+	// field to the objects configs to determine the type.
+	qdMap, _ := composeQdiscs(handleMap, parentMap, conf.Qdiscs, interf)
+	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
+	//flMap, _ := composeFilters(handleMap, parentMap, conf.Filters, interf)
 
+	// constrcut tc objects into an array
 	var nodes []*Node
 	for k, v := range qdMap {
 		n := NewNodeWithObject(k, "qdisc", *v)
@@ -91,11 +94,8 @@ func main() {
 		n := NewNodeWithObject(k, "class", *v)
 		nodes = append(nodes, n)
 	}
-	for k, v := range flMap {
-		n := NewNodeWithObject(k, "filter", *v)
-		nodes = append(nodes, n)
-	}
 
+	// construct the TC tree
 	tree, index := FindRootNode(nodes)
 	nodes = append(nodes[:index], nodes[index+1:]...)
 	leftover := tree.ComposeChildren(nodes)
@@ -119,12 +119,18 @@ func main() {
 	}
 
 	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
-	systemTree := ComposeTree(systemNodes)
-
-	if !systemTree.CompareTree(tree) {
-		logger.Log("level", "INFO", "msg", "applying new config")
-		systemTree.UpdateTree(tree, rtnl)
+	if len(systemNodes) > 0 {
+		systemTree, index := FindRootNode(systemNodes)
+		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
+		_ = systemTree.ComposeChildren(systemNodes)
+		if !systemTree.CompareTree(tree) {
+			logger.Log("level", "INFO", "msg", "applying new config")
+			systemTree.UpdateTree(tree, rtnl)
+		} else {
+			logger.Log("level", "INFO", "msg", "config up to date")
+		}
 	} else {
-		logger.Log("level", "INFO", "msg", "config up to date")
+		tree.ApplyNode(rtnl)
 	}
+
 }
