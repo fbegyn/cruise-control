@@ -38,7 +38,7 @@ func TestNewNode(t *testing.T) {
 					tt.name, tt.typ, result, tt.expected,
 				)
 			}
-			if !result.equalObject(tt.expected) {
+			if !result.equalNode(tt.expected) {
 				t.Errorf("Failed to create node with correct object. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
 				)
@@ -102,7 +102,7 @@ func TestNewNodeWithObject(t *testing.T) {
 					tt.name, tt.typ, result, tt.expected,
 				)
 			}
-			if !result.equalObject(tt.expected) {
+			if !result.equalKind(tt.expected) {
 				t.Errorf("Failed to create node with correct object. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)

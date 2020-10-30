@@ -38,18 +38,12 @@ func NewNodeWithObject(n, typ string, object tc.Object) *Node {
 
 // isChildOf checks if the current node is a child of node n
 func (tr *Node) isChildOf(n *Node) bool {
-	if tr.Object.Msg.Parent == n.Object.Handle {
-		return true
-	}
-	return false
+	return tr.Object.Msg.Parent == n.Object.Handle
 }
 
 // isChild checks if the node n is a child of the current node
 func (tr *Node) isChild(n *Node) bool {
-	if n.Object.Msg.Parent == tr.Object.Handle {
-		return true
-	}
-	return false
+	return n.Object.Msg.Parent == tr.Object.Handle
 }
 
 // addNode add a node to the current node
@@ -86,7 +80,7 @@ func (tr *Node) equalMsg(n *Node) bool {
 	return tr.Object.Handle == n.Object.Handle
 }
 
-// equalObject checks if the object of the nodes are the same
+// equalKind checks if the object of the nodes are the same
 // TODO: figure out a better compare between node objects
 // returned trees from the kernel are modified with defaults
 func (tr *Node) equalKind(n *Node) bool {

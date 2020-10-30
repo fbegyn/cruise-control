@@ -13,7 +13,11 @@ import (
 func parseQdiscHandle(config map[string]QdiscConfig) (map[string]uint32, error) {
 	handleMap := make(map[string]uint32)
 	for k, v := range config {
-		handleMap[k] = StrHandle(v.Handle)
+		handle, err := StrHandle(v.Handle)
+		handleMap[k] = handle
+		if err != nil {
+			return nil, err
+		}
 	}
 	return handleMap, nil
 }
@@ -23,7 +27,11 @@ func parseQdiscHandle(config map[string]QdiscConfig) (map[string]uint32, error) 
 func parseClassHandle(config map[string]ClassConfig) (map[string]uint32, error) {
 	handleMap := make(map[string]uint32)
 	for k, v := range config {
-		handleMap[k] = StrHandle(v.ClassID)
+		handle, err := StrHandle(v.ClassID)
+		handleMap[k] = handle
+		if err != nil {
+			return nil, err
+		}
 	}
 	return handleMap, nil
 }
@@ -33,7 +41,11 @@ func parseClassHandle(config map[string]ClassConfig) (map[string]uint32, error) 
 func parseFilterHandle(config map[string]FilterConfig) (map[string]uint32, error) {
 	handleMap := make(map[string]uint32)
 	for k, v := range config {
-		handleMap[k] = StrHandle(v.FilterID)
+		handle, err := StrHandle(v.FilterID)
+		handleMap[k] = handle
+		if err != nil {
+			return nil, err
+		}
 	}
 	return handleMap, nil
 }

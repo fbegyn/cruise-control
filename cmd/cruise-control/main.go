@@ -84,7 +84,7 @@ func main() {
 	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
 	//flMap, _ := composeFilters(handleMap, parentMap, conf.Filters, interf)
 
-	// constrcut tc objects into an array
+	// construct tc objects into an array
 	var nodes []*Node
 	for k, v := range qdMap {
 		n := NewNodeWithObject(k, "qdisc", *v)
