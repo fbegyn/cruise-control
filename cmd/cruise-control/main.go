@@ -113,23 +113,22 @@ func main() {
 	}()
 
 	if len(nodes) == 0 {
-		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
+		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over","tree","config")
 	} else {
-		logger.Log("level", "INFO", "msg", "some nodes left over")
+		logger.Log("level", "INFO", "msg", "some nodes left over","tree","config")
 	}
 
-	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index), handleMap)
 	if len(systemNodes) > 0 {
 		systemTree, index := FindRootNode(systemNodes)
+		fmt.Println(systemTree)
+		fmt.Println(tree)
 		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
-		_ = systemTree.ComposeChildren(systemNodes)
-		if !systemTree.CompareTree(tree) {
-			logger.Log("level", "INFO", "msg", "applying new config")
-			systemTree.UpdateTree(tree, rtnl)
-		} else {
-			logger.Log("level", "INFO", "msg", "config up to date")
-		}
+		systemNodes = systemTree.ComposeChildren(systemNodes)
+		logger.Log("level","INFO","msg","updating config")
+		systemTree.UpdateTree(tree, rtnl)
 	} else {
+		logger.Log("level","INFO","msg","no config found, applying config file")
 		tree.ApplyNode(rtnl)
 	}
 

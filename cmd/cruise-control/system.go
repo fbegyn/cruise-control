@@ -8,7 +8,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
+func GetInterfaceNodes(tcnl *tc.Tc, interf uint32, handleMap map[string]uint32) (tr []*Node) {
+	revHandleMap := make(map[uint32]string)
+	for k, v := range handleMap {
+		revHandleMap[v] = k
+	}
+
 	qdiscs, err := tcnl.Qdisc().Get()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get qdiscs")
@@ -32,12 +37,12 @@ func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
 		if qd.Ifindex != interf {
 			continue
 		}
-		qdHandle := fmt.Sprintf("%d", qd.Handle)
+		qdHandle := revHandleMap[qd.Handle]
 		n := NewNodeWithObject(qdHandle, "qdisc", qd)
 		tr = append(tr, n)
 	}
 	for _, cl := range classes {
-		clHandle := fmt.Sprintf("%d", cl.Handle)
+		clHandle := revHandleMap[cl.Handle]
 		n := NewNodeWithObject(clHandle, "class", cl)
 		tr = append(tr, n)
 	}

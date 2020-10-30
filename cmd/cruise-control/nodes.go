@@ -77,7 +77,7 @@ func (tr *Node) addIfChild(n *Node) {
 
 // equalMsg checks if the metadata of 2 nodes are the same
 func (tr *Node) equalMsg(n *Node) bool {
-	return tr.Object.Handle == n.Object.Handle
+	return (tr.Object.Msg.Handle == n.Object.Msg.Handle) && (tr.Object.Msg.Ifindex == n.Object.Msg.Ifindex)	&& (tr.Object.Msg.Parent == n.Object.Msg.Parent)
 }
 
 // equalKind checks if the object of the nodes are the same
@@ -133,9 +133,8 @@ func (tr *Node) CompareTree(n *Node) bool {
 }
 
 func (tr *Node) ReplaceTree(n *Node, tcnl *tc.Tc) {
-	fmt.Println(n)
-	n.DeleteNode(tcnl)
 	tr.ApplyNode(tcnl)
+	n.DeleteNode(tcnl)
 }
 
 // FindPeer finds the child of another node that matches the current selected node. Can be used to
