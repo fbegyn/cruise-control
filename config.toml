@@ -4,14 +4,14 @@ interface = "test"
 type = "hfsc"
 handle = "1:0"
 parent = "root"
-  [qdiscs."root-qd".specs]
-  defCls = 1
+        [qdiscs."root-qd".specs]
+        defCls = 3
 
 [qdiscs."prio1-qd"]
 type = "fq_codel"
 handle = "11:0"
 parent = "prio1-cl"
-  [qdiscs."prio1-qd".specs]
+        [qdiscs."prio1-qd".specs]
 	limit = 1200
 	flow = 65535
 	target = 5000
@@ -21,7 +21,7 @@ parent = "prio1-cl"
 type = "fq_codel"
 handle = "12:0"
 parent = "prio2-cl"
-  [qdiscs."prio2-qd".specs]
+        [qdiscs."prio2-qd".specs]
 	limit = 1200
 	flow = 65535
 	target = 5000
@@ -31,7 +31,7 @@ parent = "prio2-cl"
 #type = "fq_codel"
 #handle = "13:0"
 #parent = "other-cl"
-#  [qdiscs."other-qd".specs]
+#        [qdiscs."other-qd".specs]
 #	limit = 1200
 #	flow = 65535
 #	target = 5000

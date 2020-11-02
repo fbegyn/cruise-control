@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config represents the config in struct shape
 type Config struct {
 	Interface string
 
@@ -21,6 +22,7 @@ type Config struct {
 	Filters map[string]FilterConfig
 }
 
+// QdiscConfig represents the Qdisc config
 type QdiscConfig struct {
 	Type   string
 	Handle string
@@ -28,6 +30,7 @@ type QdiscConfig struct {
 	Specs  map[string]uint32
 }
 
+// ClassConfig represents that Class config
 type ClassConfig struct {
 	Type    string
 	ClassID string
@@ -35,6 +38,7 @@ type ClassConfig struct {
 	Specs   map[string]interface{}
 }
 
+// FilterConfig represents a TC filter config in struct
 type FilterConfig struct {
 	Type     string
 	FilterID string
@@ -84,7 +88,7 @@ func main() {
 	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
 	//flMap, _ := composeFilters(handleMap, parentMap, conf.Filters, interf)
 
-	// constrcut tc objects into an array
+	// construct tc objects into an array
 	var nodes []*Node
 	for k, v := range qdMap {
 		n := NewNodeWithObject(k, "qdisc", *v)
@@ -113,23 +117,22 @@ func main() {
 	}()
 
 	if len(nodes) == 0 {
-		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over")
+		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over","tree","config")
 	} else {
-		logger.Log("level", "INFO", "msg", "some nodes left over")
+		logger.Log("level", "INFO", "msg", "some nodes left over","tree","config")
 	}
 
-	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index), handleMap)
 	if len(systemNodes) > 0 {
 		systemTree, index := FindRootNode(systemNodes)
+		fmt.Println(systemTree)
+		fmt.Println(tree)
 		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
-		_ = systemTree.ComposeChildren(systemNodes)
-		if !systemTree.CompareTree(tree) {
-			logger.Log("level", "INFO", "msg", "applying new config")
-			systemTree.UpdateTree(tree, rtnl)
-		} else {
-			logger.Log("level", "INFO", "msg", "config up to date")
-		}
+		systemNodes = systemTree.ComposeChildren(systemNodes)
+		logger.Log("level","INFO","msg","updating config")
+		systemTree.UpdateTree(tree, rtnl)
 	} else {
+		logger.Log("level","INFO","msg","no config found, applying config file")
 		tree.ApplyNode(rtnl)
 	}
 

@@ -7,6 +7,7 @@ import (
 	"github.com/florianl/go-tc"
 )
 
+// Node holds a node of the TC tree style structure.
 type Node struct {
 	Name     string
 	Type     string
@@ -36,37 +37,14 @@ func NewNodeWithObject(n, typ string, object tc.Object) *Node {
 	}
 }
 
-// isChildOf checks if the current node is a child of node n
-func (tr *Node) isChildOf(n *Node) bool {
-	if tr.Object.Msg.Parent == n.Object.Handle {
-		return true
-	}
-	return false
-}
-
-// isChild checks if the node n is a child of the current node
-func (tr *Node) isChild(n *Node) bool {
-	if n.Object.Msg.Parent == tr.Object.Handle {
-		return true
-	}
-	return false
-}
-
-// addNode add a node to the current node
-func (tr *Node) addNode(n *Node) {
+// addNode add node n to the current node tr
+func (tr *Node) addChild(n *Node) {
 	tr.Children = append(tr.Children, n)
 }
 
-// addToNode add current node to node n as child
-func (tr *Node) addToNode(n *Node) {
+// addToNode add the current node to node n
+func (tr *Node) addToParent(n *Node) {
 	n.Children = append(n.Children, tr)
-}
-
-// addChild add node n to node if is child
-func (tr *Node) addChild(n *Node) {
-	if tr.isChild(n) {
-		tr.addNode(n)
-	}
 }
 
 // deleteChild delete child at indx from node
@@ -74,19 +52,25 @@ func (tr *Node) deleteChild(index int) {
 	tr.Children = append(tr.Children[:index], tr.Children[index+1:]...)
 }
 
-// addChild add node to node n if child of node n
-func (tr *Node) addIfChild(n *Node) {
-	if tr.isChildOf(n) {
-		tr.addToNode(n)
-	}
+// isChild checks if the node n is a child of the current node
+func (tr *Node) isChild(n *Node) bool {
+	return n.Object.Msg.Parent == tr.Object.Handle
+}
+
+// isChildOf checks if the current node is a child of node n
+func (tr *Node) isChildOf(n *Node) bool {
+	return tr.Object.Msg.Parent == n.Object.Handle
 }
 
 // equalMsg checks if the metadata of 2 nodes are the same
 func (tr *Node) equalMsg(n *Node) bool {
-	return tr.Object.Handle == n.Object.Handle
+	equalHandle := (tr.Object.Msg.Handle == n.Object.Msg.Handle) 
+	equalInterface := (tr.Object.Msg.Ifindex == n.Object.Msg.Ifindex) 
+	equalParent := (tr.Object.Msg.Parent == n.Object.Msg.Parent)
+	return equalHandle && equalInterface && equalParent
 }
 
-// equalObject checks if the object of the nodes are the same
+// equalKind checks if the object of the nodes are the same
 // TODO: figure out a better compare between node objects
 // returned trees from the kernel are modified with defaults
 func (tr *Node) equalKind(n *Node) bool {
@@ -111,37 +95,11 @@ func (tr *Node) equalChildren(n *Node) bool {
 			}
 		}
 		equalChildren = equalChildren && equalChild
-	}
-	return equalChildren
-}
-
-// CompareTree validates if tr matches the tree of argument n
-func (tr *Node) CompareTree(n *Node) bool {
-	if !tr.equalNode(n) {
-		return false
-	}
-
-	if len(tr.Children) != len(n.Children) {
-		return false
-	}
-
-	equalChildren := true
-	for _, child := range tr.Children {
-		equalChild := false
-		for _, peer := range n.Children {
-			if equalChild = child.CompareTree(peer); equalChild {
-				break
-			}
+		if !equalChildren {
+			break
 		}
-		equalChildren = equalChildren && equalChild
 	}
 	return equalChildren
-}
-
-func (tr *Node) ReplaceTree(n *Node, tcnl *tc.Tc) {
-	fmt.Println(n)
-	n.DeleteNode(tcnl)
-	tr.ApplyNode(tcnl)
 }
 
 // FindPeer finds the child of another node that matches the current selected node. Can be used to
@@ -150,41 +108,6 @@ func (tr *Node) ReplaceTree(n *Node, tcnl *tc.Tc) {
 // TODO: implement the function
 func (tr *Node) FindPeer(child, n *Node) (*Node, bool) {
 	return nil, false
-}
-
-// TODO: implement function
-func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
-	if !tr.equalNode(n) {
-		tr.ReplaceTree(n, tcnl)
-		return
-	}
-
-	for _, child := range tr.Children {
-		for _, peer := range n.Children {
-			if child.CompareTree(peer) {
-				break
-			}
-			child.ReplaceTree(peer, tcnl)
-		}
-	}
-}
-
-// FindRootNode finds the TC object with a root handle from a set of TC objects
-func FindRootNode(nodes []*Node) (n *Node, index int) {
-	for i, v := range nodes {
-		if v.Object.Msg.Parent == tc.HandleRoot {
-			return v, i
-		}
-	}
-	return nil, 0
-}
-
-// ComposeTree composes the tree based on an array of tree nodes
-func ComposeTree(nodes []*Node) (tr *Node) {
-	tr, index := FindRootNode(nodes)
-	nodes = append(nodes[:index], nodes[index+1:]...)
-	tr.ComposeChildren(nodes)
-	return
 }
 
 // FindChildren looks for the children of a node in a set of TC objects. It returns a slice of the
@@ -208,7 +131,9 @@ func (tr *Node) FindChildren(nodes []*Node) (children []*Node, leftover []*Node,
 // children of the current node
 func (tr *Node) AddChildren(nodes []*Node) {
 	for _, v := range nodes {
-		tr.addChild(v)
+		if tr.isChild(v) {
+		    tr.addChild(v)
+		}
 	}
 }
 
@@ -279,4 +204,14 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 			return
 		}
 	}
+}
+
+// FindRootNode finds the TC object with a root handle from a set of TC objects
+func FindRootNode(nodes []*Node) (n *Node, index int) {
+	for i, v := range nodes {
+		if v.Object.Msg.Parent == tc.HandleRoot {
+			return v, i
+		}
+	}
+	return nil, 0
 }
