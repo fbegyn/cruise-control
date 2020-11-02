@@ -48,8 +48,12 @@ func (tr *Node) addToParent(n *Node) {
 }
 
 // deleteChild delete child at indx from node
-func (tr *Node) deleteChild(index int) {
+func (tr *Node) deleteChild(index int) error {
+	if len(tr.Children) - index < 0 {
+		return fmt.Errorf("index %d out of bounds", index)
+	}
 	tr.Children = append(tr.Children[:index], tr.Children[index+1:]...)
+	return nil
 }
 
 // isChild checks if the node n is a child of the current node
@@ -102,12 +106,14 @@ func (tr *Node) equalChildren(n *Node) bool {
 	return equalChildren
 }
 
-// FindPeer finds the child of another node that matches the current selected node. Can be used to
-// easily check if 2 nodes share the same child. Return the node and a boolean. If true, the returned
-// node is the peer. If false, the returned node is the child itself
-// TODO: implement the function
-func (tr *Node) FindPeer(child, n *Node) (*Node, bool) {
-	return nil, false
+// AddChildren iterates over a set of nodes and if the node is a child, adds that node to the
+// children of the current node
+func (tr *Node) AddChildren(nodes []*Node) {
+	for _, v := range nodes {
+		if tr.isChild(v) {
+		    tr.addChild(v)
+		}
+	}
 }
 
 // FindChildren looks for the children of a node in a set of TC objects. It returns a slice of the
@@ -125,16 +131,6 @@ func (tr *Node) FindChildren(nodes []*Node) (children []*Node, leftover []*Node,
 		left = append(left, v)
 	}
 	return children, left, hasChild
-}
-
-// AddChildren iterates over a set of nodes and if the node is a child, adds that node to the
-// children of the current node
-func (tr *Node) AddChildren(nodes []*Node) {
-	for _, v := range nodes {
-		if tr.isChild(v) {
-		    tr.addChild(v)
-		}
-	}
 }
 
 // ComposeChildren will preform a recursive lookup for the children of a node in a set of nodes. When
@@ -206,6 +202,14 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 	}
 }
 
+// FindPeer finds the child of another node that matches the current selected node. Can be used to
+// easily check if 2 nodes share the same child. Return the node and a boolean. If true, the returned
+// node is the peer. If false, the returned node is the child itself
+// TODO: implement the function
+func (tr *Node) FindPeer(child, n *Node) (*Node, bool) {
+	return nil, false
+}
+
 // FindRootNode finds the TC object with a root handle from a set of TC objects
 func FindRootNode(nodes []*Node) (n *Node, index int) {
 	for i, v := range nodes {
@@ -215,3 +219,4 @@ func FindRootNode(nodes []*Node) (n *Node, index int) {
 	}
 	return nil, 0
 }
+

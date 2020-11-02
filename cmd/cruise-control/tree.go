@@ -27,15 +27,10 @@ func (tr *Node) CompareTree(n *Node) bool {
 	return equalChildren
 }
 
-func (tr *Node) ReplaceTree(n *Node, tcnl *tc.Tc) {
-	tr.ApplyNode(tcnl)
-	n.DeleteNode(tcnl)
-}
-
 // TODO: implement function
 func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 	if !tr.equalNode(n) {
-		tr.ReplaceTree(n, tcnl)
+		n.ApplyNode(tcnl)
 		return
 	}
 
@@ -44,7 +39,7 @@ func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 			if child.CompareTree(peer) {
 				break
 			}
-			child.ReplaceTree(peer, tcnl)
+			peer.ApplyNode(tcnl)
 		}
 	}
 }
