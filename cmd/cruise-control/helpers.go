@@ -20,6 +20,7 @@ func StrHandle(handle string) (uint32, error) {
 	var handleMaj, handleMin int64
 	var err error
 	handleParts := strings.Split(handle, ":")
+	fmt.Println(handle)
 	handleMaj, err = strconv.ParseInt(handleParts[0], 16, 32)
 	if err != nil {
 		return 0, fmt.Errorf("failed to parse the major part of the handle: %s\n", err)

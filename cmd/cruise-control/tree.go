@@ -31,15 +31,19 @@ func (tr *Node) CompareTree(n *Node) bool {
 func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 	if !tr.equalNode(n) {
 		n.ApplyNode(tcnl)
+		tr.DeleteNode(tcnl)
 		return
+	} else {
+		n.ApplyNode(tcnl)
 	}
 
 	for _, child := range tr.Children {
 		for _, peer := range n.Children {
 			if child.CompareTree(peer) {
+				peer.ApplyNode(tcnl)
+				child.DeleteNode(tcnl)
 				break
 			}
-			peer.ApplyNode(tcnl)
 		}
 	}
 }

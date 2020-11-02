@@ -202,8 +202,7 @@ func TestRelation(t *testing.T){
 		if !parent.isChild(child) {
 			t.Errorf("child is not related to parent")
 		}
-	})
-	t.Run("isChildOf", func(t *testing.T){
+
 		if !child.isChildOf(parent) {
 			t.Errorf("child is not related to parent")
 		}
@@ -212,8 +211,6 @@ func TestRelation(t *testing.T){
 		if parent.isChild(child2) {
 			t.Errorf("child should not be related to parent")
 		}
-	})
-	t.Run("isChildOfFail", func(t *testing.T){
 		if child.isChild(parent) {
 			t.Errorf("child should not be related to parent")
 		}
@@ -221,35 +218,79 @@ func TestRelation(t *testing.T){
 }
 
 func TestCompare(t *testing.T){
-	parentObject := tc.Object{
+	node1Object := tc.Object{
 		Msg: tc.Msg{
-			Handle: 10,
-			Parent: tc.HandleRoot,
-		},
-	}
-	childObject := tc.Object{
-		Msg: tc.Msg{
+			Ifindex: 1,
 			Handle: 11,
 			Parent: 10,
 		},
+		Attribute: tc.Attribute{
+			Kind: "hfsc",
+			HfscQOpt: &tc.HfscQOpt{
+				DefCls: 1,
+			},
+		},
 	}
 
-	child2Object := tc.Object{
+	node2Object := tc.Object{
 		Msg: tc.Msg{
+			Ifindex: 1,
 			Handle: 11,
 			Parent: 10,
 		},
-	}
-
-	child3Object := tc.Object{
-		Msg: tc.Msg{
-			Handle: 100,
-			Parent: 300,
+		Attribute: tc.Attribute{
+			Kind: "hfsc",
+			HfscQOpt: &tc.HfscQOpt{
+				DefCls: 1,
+			},
 		},
 	}
 
-	parent := NewNodeWithObject("parent","testing", parentObject)
-	child := NewNodeWithObject("child","testing", childObject)
-	child2 := NewNodeWithObject("child2","testing", child2Object)
-	child3 := NewNodeWithObject("child2","testing", child2Object)
+	target := uint32(10)
+	node3Object := tc.Object{
+		Msg: tc.Msg{
+			Ifindex: 4,
+			Handle: 11,
+			Parent: 10,
+		},
+		Attribute: tc.Attribute{
+			Kind: "fq_codel",
+			FqCodel: &tc.FqCodel{
+				Target: &target,
+			},
+		},
+	}
+
+	node1 := NewNodeWithObject("node1","testing", node1Object)
+	node2 := NewNodeWithObject("node2","testing", node2Object)
+	node3 := NewNodeWithObject("node3","testing", node3Object)
+
+	t.Run("compareMsg", func(t *testing.T){
+		if !node1.equalMsg(node2) {
+			t.Errorf("2 objects with the same Msg are not comparing correctly")
+		}
+		if node1.equalMsg(node3) {
+			t.Errorf("2 objects that should not be equal, have equal Msg")
+		}
+		node2.Object.Msg.Handle = 300
+		node2.Object.Msg.Parent = 200
+		node3.Object.Msg.Handle = 300
+		node3.Object.Msg.Parent = 200
+		if node1.equalMsg(node2) {
+			t.Errorf("2 objects that should not be equal, have equal Msg")
+		}
+		if node1.equalMsg(node3) {
+			t.Errorf("2 objects that should not be equal, have equal Msg")
+		}
+	})
+
+	t.Run("compareKind", func(t *testing.T){
+		if !node1.equalKind(node2) {
+			t.Errorf("2 objects with the same Attrs are not comparing as false")
+		}
+
+		if node1.equalKind(node3) {
+			t.Errorf("2 objects with the different Attrs are not comparing as true")
+		}
+	})
 }

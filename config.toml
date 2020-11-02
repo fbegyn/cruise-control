@@ -27,16 +27,6 @@ parent = "prio2-cl"
 	target = 5000
 	ecn = 0
 
-#[qdiscs."other-qd"]
-#type = "fq_codel"
-#handle = "13:0"
-#parent = "other-cl"
-#        [qdiscs."other-qd".specs]
-#	limit = 1200
-#	flow = 65535
-#	target = 5000
-#	ecn = 0
-
 # max interface speed
 [classes."interface-cl"]
 type = "hfsc"
@@ -96,11 +86,21 @@ parent = "internet-cl"
 	rate = 125e5
 
 # other
-#[classes."other-cl"]
-#type = "hfsc"
-#classid = "1:13"
-#parent = "internet-cl"
-#	[classes."other-cl".specs.ls]
-#	burst = 0.0
-#	delay = 100
-#	rate = 375e4
+[classes."other-cl"]
+type = "hfsc"
+classid = "1:13"
+parent = "internet-cl"
+	[classes."other-cl".specs.ls]
+	burst = 0.0
+	delay = 100
+	rate = 375e4
+
+[qdiscs."other-qd"]
+type = "fq_codel"
+handle = "13:0"
+parent = "other-cl"
+        [qdiscs."other-qd".specs]
+	limit = 1200
+	flow = 65535
+	target = 5000
+	ecn = 0

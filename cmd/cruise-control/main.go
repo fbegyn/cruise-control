@@ -125,12 +125,15 @@ func main() {
 	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index), handleMap)
 	if len(systemNodes) > 0 {
 		systemTree, index := FindRootNode(systemNodes)
-		fmt.Println(systemTree)
-		fmt.Println(tree)
 		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
 		systemNodes = systemTree.ComposeChildren(systemNodes)
-		logger.Log("level","INFO","msg","updating config")
-		systemTree.UpdateTree(tree, rtnl)
+		if !systemTree.CompareTree(tree){
+		    logger.Log("level","INFO","msg","updating config")
+		    systemTree.DeleteNode(rtnl)
+		    tree.ApplyNode(rtnl)
+		} else {
+		    logger.Log("level","INFO","msg","system already up to date")
+		}
 	} else {
 		logger.Log("level","INFO","msg","no config found, applying config file")
 		tree.ApplyNode(rtnl)
