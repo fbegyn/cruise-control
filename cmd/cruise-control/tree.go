@@ -5,7 +5,7 @@ import (
 )
 
 // CompareTree validates if tr matches the tree of argument n
-func (tr *Node) CompareTree(n *Node) bool {
+func (tr Node) CompareTree(n Node) bool {
 	if !tr.equalNode(n) {
 		return false
 	}
@@ -18,7 +18,7 @@ func (tr *Node) CompareTree(n *Node) bool {
 	for _, child := range tr.Children {
 		equalChild := false
 		for _, peer := range n.Children {
-			if equalChild = child.CompareTree(peer); equalChild {
+			if equalChild = child.CompareTree(*peer); equalChild {
 				break
 			}
 		}
@@ -29,7 +29,7 @@ func (tr *Node) CompareTree(n *Node) bool {
 
 // TODO: implement function
 func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
-	if !tr.equalNode(n) {
+	if !tr.equalNode(*n) {
 		n.ApplyNode(tcnl)
 		tr.DeleteNode(tcnl)
 		return
@@ -39,7 +39,7 @@ func (tr *Node) UpdateTree(n *Node, tcnl *tc.Tc) {
 
 	for _, child := range tr.Children {
 		for _, peer := range n.Children {
-			if child.CompareTree(peer) {
+			if child.CompareTree(*peer) {
 				peer.ApplyNode(tcnl)
 				child.DeleteNode(tcnl)
 				break

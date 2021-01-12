@@ -1,4 +1,4 @@
-interface = "test"
+interface = "test-01"
 
 [qdiscs."root-qd"]
 type = "hfsc"
@@ -24,7 +24,7 @@ parent = "prio2-cl"
         [qdiscs."prio2-qd".specs]
 	limit = 1200
 	flow = 65535
-	target = 5000
+	target = 6000
 	ecn = 0
 
 # max interface speed
@@ -82,7 +82,7 @@ classid = "1:12"
 parent = "internet-cl"
 	[classes."prio2-cl".specs.sc]
 	burst = 0.0
-	delay = 60
+	delay = 120
 	rate = 125e5
 
 # other
@@ -99,7 +99,7 @@ parent = "internet-cl"
 type = "fq_codel"
 handle = "13:0"
 parent = "other-cl"
-        [qdiscs."other-qd".specs]
+    [qdiscs."other-qd".specs]
 	limit = 1200
 	flow = 65535
 	target = 5000

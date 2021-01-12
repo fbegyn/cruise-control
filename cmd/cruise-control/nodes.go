@@ -57,17 +57,17 @@ func (tr *Node) deleteChild(index int) error {
 }
 
 // isChild checks if the node n is a child of the current node
-func (tr *Node) isChild(n *Node) bool {
+func (tr Node) isChild(n Node) bool {
 	return n.Object.Msg.Parent == tr.Object.Handle
 }
 
 // isChildOf checks if the current node is a child of node n
-func (tr *Node) isChildOf(n *Node) bool {
+func (tr Node) isChildOf(n Node) bool {
 	return tr.Object.Msg.Parent == n.Object.Handle
 }
 
 // equalMsg checks if the metadata of 2 nodes are the same
-func (tr *Node) equalMsg(n *Node) bool {
+func (tr Node) equalMsg(n Node) bool {
 	equalHandle := (tr.Object.Msg.Handle == n.Object.Msg.Handle) 
 	equalInterface := (tr.Object.Msg.Ifindex == n.Object.Msg.Ifindex) 
 	equalParent := (tr.Object.Msg.Parent == n.Object.Msg.Parent)
@@ -77,15 +77,47 @@ func (tr *Node) equalMsg(n *Node) bool {
 // equalKind checks if the object of the nodes are the same
 // TODO: figure out a better compare between node objects
 // returned trees from the kernel are modified with defaults
-func (tr *Node) equalKind(n *Node) bool {
+func (tr Node) equalKind(n Node) bool {
 	return tr.Object.Attribute.Kind == n.Object.Attribute.Kind
+}
+
+func CompareSC(a, b tc.ServiceCurve) bool {
+	return (a.D == b.D && a.M1 == b.M1 && a.M2 == b.M2)
+}
+
+func (tr Node) equalProperties(n Node) bool {
+	switch tr.Object.Attribute.Kind {
+	case "hfsc":	
+		if tr.Object.Hfsc == nil && n.Object.Hfsc == nil { break }
+		trHfsc := tr.Object.Hfsc
+		nHfsc := n.Object.Hfsc
+		m := make(map[string]bool)
+		if trHfsc.Rsc != nil && nHfsc.Rsc != nil {
+			m["rsc"] = CompareSC(*trHfsc.Rsc, *nHfsc.Rsc)
+		}
+		if trHfsc.Usc != nil && nHfsc.Usc != nil {
+			m["usc"] = CompareSC(*trHfsc.Usc, *nHfsc.Usc)
+		}
+		if trHfsc.Fsc != nil && nHfsc.Fsc != nil {
+			m["fsc"] = CompareSC(*trHfsc.Fsc, *nHfsc.Fsc)
+		}
+
+		for _, v := range m {
+			if v == false {
+				return false
+			}
+		}
+		return true
+	}
+	return true
 }
 
 // equalNode checks if the header and object of the nodes are the same
 // it ignores the children, these should be check sperately with the
 // equalChildren function
-func (tr *Node) equalNode(n *Node) bool {
-	return (tr.equalMsg(n) && tr.equalKind(n))
+func (tr Node) equalNode(n Node) bool {
+	tr.equalProperties(n)
+	return (tr.equalMsg(n) && tr.equalKind(n) && tr.equalProperties(n))
 }
 
 // equalChildren check if the children of the nodes are the same
@@ -94,7 +126,7 @@ func (tr *Node) equalChildren(n *Node) bool {
 	for _, child := range tr.Children {
 		equalChild := false
 		for _, peer := range n.Children {
-			if equalChild = child.equalNode(peer); equalChild {
+			if equalChild = child.equalNode(*peer); equalChild {
 				break
 			}
 		}
@@ -110,7 +142,7 @@ func (tr *Node) equalChildren(n *Node) bool {
 // children of the current node
 func (tr *Node) AddChildren(nodes []*Node) {
 	for _, v := range nodes {
-		if tr.isChild(v) {
+		if tr.isChild(*v) {
 		    tr.addChild(v)
 		}
 	}
@@ -123,7 +155,7 @@ func (tr *Node) FindChildren(nodes []*Node) (children []*Node, leftover []*Node,
 	var left []*Node
 	hasChild = false
 	for _, v := range nodes {
-		if tr.isChild(v) {
+		if tr.isChild(*v) {
 			hasChild = true
 			children = append(children, v)
 			continue
