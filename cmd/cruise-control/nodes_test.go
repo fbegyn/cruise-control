@@ -34,17 +34,17 @@ func TestNewNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			result := NewNode(tt.name, tt.typ)
-			if !result.equalNode(tt.expected) {
+			if !result.equalNode(*tt.expected) {
 				t.Errorf("Failed to create node with correct header. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
 				)
 			}
-			if !result.equalMsg(tt.expected) {
+			if !result.equalMsg(*tt.expected) {
 				t.Errorf("Failed to create an object with the same Msg. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)
 			}
-			if !result.equalKind(tt.expected) {
+			if !result.equalKind(*tt.expected) {
 				t.Errorf("Failed to create an object with the same kind. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)
@@ -102,17 +102,17 @@ func TestNewNodeWithObject(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			result := NewNodeWithObject(tt.name, tt.typ, tt.object)
-			if !result.equalNode(tt.expected) {
+			if !result.equalNode(*tt.expected) {
 				t.Errorf("Failed to create node with correct header. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
 				)
 			}
-			if !result.equalMsg(tt.expected) {
+			if !result.equalMsg(*tt.expected) {
 				t.Errorf("Failed to create an object with the same Msg. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)
 			}
-			if !result.equalKind(tt.expected) {
+			if !result.equalKind(*tt.expected) {
 				t.Errorf("Failed to create an object with the same kind. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result.Object, tt.expected.Object,
 				)
@@ -166,10 +166,16 @@ func TestDeleteChild(t *testing.T){
 		testNode.addChild(testChild)
 
 		err := testNode.deleteChild(0)
+		if err != nil {
+			t.Fatalf("deleting the child caused an error: %v", err)
+		}
 		if len(testNode.Children) != 2 {
 			t.Errorf("failed to delete child from node")
 		}
 		err = testNode.deleteChild(1)
+		if err != nil {
+			t.Fatalf("deleting the child caused an error: %v", err)
+		}
 		if len(testNode.Children) == 2 {
 			t.Errorf("failed to delete child at index 1 from node")
 		}
@@ -199,19 +205,19 @@ func TestRelation(t *testing.T){
 	childObject.Msg.Parent = 200
 	child2 := NewNodeWithObject("child2","testing", childObject)
 	t.Run("isChild", func(t *testing.T){
-		if !parent.isChild(child) {
+		if !parent.isChild(*child) {
 			t.Errorf("child is not related to parent")
 		}
 
-		if !child.isChildOf(parent) {
+		if !child.isChildOf(*parent) {
 			t.Errorf("child is not related to parent")
 		}
 	})
 	t.Run("isChildFail", func(t *testing.T){
-		if parent.isChild(child2) {
+		if parent.isChild(*child2) {
 			t.Errorf("child should not be related to parent")
 		}
-		if child.isChild(parent) {
+		if child.isChild(*parent) {
 			t.Errorf("child should not be related to parent")
 		}
 	})
@@ -266,30 +272,30 @@ func TestCompare(t *testing.T){
 	node3 := NewNodeWithObject("node3","testing", node3Object)
 
 	t.Run("compareMsg", func(t *testing.T){
-		if !node1.equalMsg(node2) {
+		if !node1.equalMsg(*node2) {
 			t.Errorf("2 objects with the same Msg are not comparing correctly")
 		}
-		if node1.equalMsg(node3) {
+		if node1.equalMsg(*node3) {
 			t.Errorf("2 objects that should not be equal, have equal Msg")
 		}
 		node2.Object.Msg.Handle = 300
 		node2.Object.Msg.Parent = 200
 		node3.Object.Msg.Handle = 300
 		node3.Object.Msg.Parent = 200
-		if node1.equalMsg(node2) {
+		if node1.equalMsg(*node2) {
 			t.Errorf("2 objects that should not be equal, have equal Msg")
 		}
-		if node1.equalMsg(node3) {
+		if node1.equalMsg(*node3) {
 			t.Errorf("2 objects that should not be equal, have equal Msg")
 		}
 	})
 
 	t.Run("compareKind", func(t *testing.T){
-		if !node1.equalKind(node2) {
+		if !node1.equalKind(*node2) {
 			t.Errorf("2 objects with the same Attrs are not comparing as false")
 		}
 
-		if node1.equalKind(node3) {
+		if node1.equalKind(*node3) {
 			t.Errorf("2 objects with the different Attrs are not comparing as true")
 		}
 	})

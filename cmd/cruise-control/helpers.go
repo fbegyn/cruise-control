@@ -22,11 +22,11 @@ func StrHandle(handle string) (uint32, error) {
 	handleParts := strings.Split(handle, ":")
 	handleMaj, err = strconv.ParseInt(handleParts[0], 16, 32)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse the major part of the handle: %s\n", err)
+		return 0, fmt.Errorf("failed to parse the major part of the handle: %s", err)
 	}
 	handleMin, err = strconv.ParseInt(handleParts[1], 16, 32)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse the minor part of the handle: %s\n", err)
+		return 0, fmt.Errorf("failed to parse the minor part of the handle: %s", err)
 	}
 	return core.BuildHandle(uint32(handleMaj), uint32(handleMin)), nil
 }

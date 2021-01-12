@@ -241,20 +241,20 @@ func composeClasses(
 	return clMap, nil
 }
 
-func composeFilters(filterConfigs map[string]FilterConfig) map[string]*tc.Object {
-	flMap := make(map[string]*tc.Object)
-	for filtName, filt := range filterConfigs {
-		logger.Log("level", "INFO", "msg", "parsing filter", "name", filtName, "filter", filt)
-		//filter, err := parseFilter()
-		//if err != nil {
-		//	logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
-		//} else {
-		//	logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
-		//	flMap = append(flMap, filter)
-		//}
-	}
-	return flMap
-}
+//func composeFilters(filterConfigs map[string]FilterConfig) map[string]*tc.Object {
+//	flMap := make(map[string]*tc.Object)
+//	for filtName, filt := range filterConfigs {
+//		logger.Log("level", "INFO", "msg", "parsing filter", "name", filtName, "filter", filt)
+//		//filter, err := parseFilter()
+//		//if err != nil {
+//		//	logger.Log("level", "ERROR", "msg", "failed to parse qdisc")
+//		//} else {
+//		//	logger.Log("level", "INFO", "msg", "qdisc parsed and adding to map")
+//		//	flMap = append(flMap, filter)
+//		//}
+//	}
+//	return flMap
+//}
 
 func parseQdiscAttrs(qd QdiscConfig) (attrs tc.Attribute, err error) {
 	switch qd.Type {

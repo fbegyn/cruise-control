@@ -103,7 +103,7 @@ func (tr Node) equalProperties(n Node) bool {
 		}
 
 		for _, v := range m {
-			if v == false {
+			if !v {
 				return false
 			}
 		}

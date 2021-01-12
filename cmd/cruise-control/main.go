@@ -126,7 +126,7 @@ func main() {
 	if len(systemNodes) > 0 {
 		systemTree, index := FindRootNode(systemNodes)
 		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
-		systemNodes = systemTree.ComposeChildren(systemNodes)
+		systemTree.ComposeChildren(systemNodes)
 		if !systemTree.CompareTree(*tree){
 		    logger.Log("level","INFO","msg","updating config")
 		    systemTree.DeleteNode(rtnl)
