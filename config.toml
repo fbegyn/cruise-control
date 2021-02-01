@@ -104,3 +104,23 @@ parent = "other-cl"
 	flow = 65535
 	target = 5000
 	ecn = 0
+
+[filters."interface-fl"]
+type = "u32"
+filterID = "0:13"
+parent = "root-qd"
+    [filters."interface-fl".specs]
+        match = "mark"
+        sel1 = "0x1"
+        sel2 = "0xf"
+        classid = "interface-cl"
+
+[filters."internet-fl"]
+type = "u32"
+filterID = "0:14"
+parent = "root-qd"
+    [filters."internet-fl".specs]
+        match = "mark"
+        sel1 = "0x2"
+        sel2 = "0xf"
+        classid = "interface-cl"

@@ -42,6 +42,7 @@ type ClassConfig struct {
 type FilterConfig struct {
 	Type     string
 	FilterID string
+	Specs   map[string]interface{}
 }
 
 var logger log.Logger
@@ -81,14 +82,16 @@ func main() {
 		os.Exit(9)
 	}
 
+	fmt.Println(handleMap)
+	
 	// compose TC objects into maps of each type. we could also create a single
 	// map of tc.Objects but that what probably include som wizardly or adding a
 	// field to the objects configs to determine the type.
 	qdMap, _ := composeQdiscs(handleMap, parentMap, conf.Qdiscs, interf)
 	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
-	//flMap, _ := composeFilters(handleMap, parentMap, conf.Filters, interf)
+	flMap, _ := composeFilters(handleMap, conf.Filters, interf)
 
-	// construct tc objects into an array
+	// construct tc qdiscs and classes into an array
 	var nodes []*Node
 	for k, v := range qdMap {
 		n := NewNodeWithObject(k, "qdisc", *v)
@@ -97,6 +100,12 @@ func main() {
 	for k, v := range clMap {
 		n := NewNodeWithObject(k, "class", *v)
 		nodes = append(nodes, n)
+	}
+	// construct the tc filters into a seperate tree
+	var filters []*Node
+	for k, v := range flMap {
+		n := NewNodeWithObject(k, "filter", *v)
+		filters = append(filters, n)
 	}
 
 	// construct the TC tree
