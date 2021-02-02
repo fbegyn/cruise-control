@@ -40,8 +40,15 @@ func parseParents(handleMap map[string]uint32, conf Config) (map[string]uint32, 
 	if err != nil {
 		return nil, err
 	}
+	h3, err := parseFilterParents(handleMap, conf.Filters)
+	if err != nil {
+		return nil, err
+	}
 
 	for k, v := range h2 {
+		h1[k] = v
+	}
+	for k, v := range h3 {
 		h1[k] = v
 	}
 	return h1, nil
@@ -74,7 +81,7 @@ func lookupObjectHandleParent(handleMap, parentMap map[string]uint32, object str
 	if !found {
 		return 0, 0, false
 	}
-	parent, found = lookupObjectParent(handleMap, object)
+	parent, found = lookupObjectParent(parentMap, object)
 	if !found {
 		return 0, 0, false
 	}
