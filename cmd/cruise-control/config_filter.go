@@ -82,7 +82,6 @@ func composeFilters(
 
 // parse the filter attributes from the config file
 func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.Attribute, err error) {
-	fmt.Println(fl)
 	switch fl.Type {
 	case "basic":
 		basic := &tc.Basic{}
@@ -101,14 +100,18 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
 			route.ClassID = &v
 		}
-		if v, ok := fl.Specs["to"].(uint32); ok {
-			route.From = &v
+		if v, ok := fl.Specs["to"].(int64); ok {
+			temp := uint32(v)
+			route.To = &temp
 		}
-		if v, ok := fl.Specs["from"].(uint32); ok {
-			route.To = &v
+		if v, ok := fl.Specs["from"].(int64); ok {
+			temp := uint32(v)
+			route.From = &temp
 		}
-		if v, ok := fl.Specs["fromif"].(uint32); ok {
-			route.IIf = &v
+
+		if v, ok := fl.Specs["iif"].(int64); ok {
+			temp := uint32(v)
+			route.IIf = &temp
 		}
 		attrs = tc.Attribute{
 			Kind: fl.Type,
