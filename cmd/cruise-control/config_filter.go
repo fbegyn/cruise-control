@@ -44,7 +44,6 @@ func parseFilterParents(
 	return parentMap, nil
 }
 
-
 // given a map of filters, contstruct a map with tc objects of those filters
 func composeFilters(
 	handleMap, parentMap map[string]uint32,
@@ -60,14 +59,14 @@ func composeFilters(
 		}
 		logger.Log("level", "INFO", "msg", "parsing filter", "name", filtName, "handle", handle, "parent", 0)
 		msg := tc.Msg{
-			Family: unix.AF_UNSPEC,
+			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle: handle,
-			Parent: parent,
+			Handle:  handle,
+			Parent:  parent,
 		}
 		attrs, err := parseFilterAttrs(filt, handleMap)
 		filter := &tc.Object{
-			Msg: msg,
+			Msg:       msg,
 			Attribute: attrs,
 		}
 		if err != nil {
@@ -85,6 +84,54 @@ func composeFilters(
 func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.Attribute, err error) {
 	fmt.Println(fl)
 	switch fl.Type {
+	case "basic":
+		basic := &tc.Basic{}
+		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
+			basic.ClassID = &v
+		}
+		if v, ok := fl.Specs["police"].(tc.Police); ok {
+			basic.Police = &v
+		}
+		attrs = tc.Attribute{
+			Kind: fl.Type,
+			Basic: basic,
+		}
+	case "route":
+		route := &tc.Route4{}
+		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
+			route.ClassID = &v
+		}
+		if v, ok := fl.Specs["to"].(uint32); ok {
+			route.From = &v
+		}
+		if v, ok := fl.Specs["from"].(uint32); ok {
+			route.To = &v
+		}
+		if v, ok := fl.Specs["fromif"].(uint32); ok {
+			route.IIf = &v
+		}
+		attrs = tc.Attribute{
+			Kind: fl.Type,
+			Route4: route,
+		}
+	case "fw":
+		fw := &tc.Fw{}
+		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
+			fw.ClassID = &v
+		}
+		if v, ok := fl.Specs["police"].(tc.Police); ok {
+			fw.Police = &v
+		}
+		if v, ok := fl.Specs["inDev"].(string); ok {
+			fw.InDev = &v
+		}
+		if v, ok := fl.Specs["mask"].(uint32); ok {
+			fw.Mask = &v
+		}
+		attrs = tc.Attribute{
+			Kind: fl.Type,
+			Fw: fw,
+		}
 	case "u32":
 		u32 := &tc.U32{}
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
@@ -103,10 +150,25 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 		}
 		attrs = tc.Attribute{
 			Kind: fl.Type,
-			U32: u32,
+			U32:  u32,
 		}
-		fmt.Println(attrs.U32.ClassID)
-		fmt.Println(attrs.U32.Mark)
+	case "tcindex":
+		tcindex := &tc.TcIndex{}
+		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
+			tcindex.ClassID = &v
+		}
+		if v, ok := fl.Specs["hash"].(uint32); ok {
+			tcindex.Hash = &v
+		}
+		if v, ok := fl.Specs["mask"].(uint16); ok {
+			tcindex.Mask = &v
+		}
+		if v, ok := fl.Specs["shift"].(uint32); ok {
+			tcindex.Shift = &v
+		}
+		if v, ok := fl.Specs["fallthrough"].(uint32); ok {
+			tcindex.FallThrough = &v
+		}
 	}
 	return attrs, nil
 }
