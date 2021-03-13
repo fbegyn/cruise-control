@@ -88,7 +88,7 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
 			basic.ClassID = &v
 		}
-		if v, ok := fl.Specs["police"].(tc.Police); ok {
+		if v, ok := fl.Specs["match"].(tc.Police); ok {
 			basic.Police = &v
 		}
 		attrs = tc.Attribute{
@@ -116,6 +116,48 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 		attrs = tc.Attribute{
 			Kind: fl.Type,
 			Route4: route,
+		}
+	case "flow":
+		flow := &tc.Flow{}
+		if v, ok := fl.Specs["keys"].(int64); ok {
+			temp := uint32(v)
+			flow.Keys = &temp
+		}
+		if v, ok := fl.Specs["mode"].(int64); ok {
+			temp := uint32(v)
+			flow.Mode = &temp
+		}
+		if v, ok := fl.Specs["baseclass"].(int64); ok {
+			temp := uint32(v)
+			flow.BaseClass = &temp
+		}
+		if v, ok := fl.Specs["rshift"].(int64); ok {
+			temp := uint32(v)
+			flow.RShift = &temp
+		}
+		if v, ok := fl.Specs["addend"].(int64); ok {
+			temp := uint32(v)
+			flow.Addend = &temp
+		}
+		if v, ok := fl.Specs["mask"].(int64); ok {
+			temp := uint32(v)
+			flow.Mask = &temp
+		}
+		if v, ok := fl.Specs["xor"].(int64); ok {
+			temp := uint32(v)
+			flow.XOR = &temp
+		}
+		if v, ok := fl.Specs["divisor"].(int64); ok {
+			temp := uint32(v)
+			flow.Divisor = &temp
+		}
+		if v, ok := fl.Specs["perturb"].(int64); ok {
+			temp := uint32(v)
+			flow.PerTurb = &temp
+		}
+		attrs = tc.Attribute{
+			Kind: fl.Type,
+			Flow: flow,
 		}
 	case "fw":
 		fw := &tc.Fw{}
