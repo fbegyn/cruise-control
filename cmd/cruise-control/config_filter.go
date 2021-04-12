@@ -159,6 +159,194 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 			Kind: fl.Type,
 			Flow: flow,
 		}
+	case "flower":
+		flower := &tc.Flower{}
+		if v, ok := fl.Specs["ClassID"]; ok {
+			
+		}
+		if v, ok := fl.Specs["Indev"].(string); ok {
+			flower.Indev = &v
+		}
+		// Actions = 2            
+		if v, ok := fl.Specs["KeyEthType"].(uint16); ok {
+			flower.KeyEthType = &v
+		}
+		if v, ok := fl.Specs["KeyIPProto"].(uint8); ok {
+			flower.KeyIPProto = &v
+		}
+		if v, ok := fl.Specs["KeyIPv4Src"].(string); ok {
+			temp := net.ParseIP(v)
+			flower.KeyIPv4Src = &temp
+		}
+		if v, ok := fl.Specs["KeyIPv4SrcMask"].(uint32); ok {
+
+		}
+		if v, ok := fl.Specs["KeyIPv4Dst"].(string); ok {
+			temp := net.ParseIP(v)
+			flower.KeyIPv4Dst = &temp
+		}
+		if v, ok := fl.Specs["KeyIPv4DstMask"].(uint32); ok {
+			
+		}
+		if v, ok := fl.Specs["KeyTCPSrc"].(uint16); ok {
+			flower.KeyTCPSrc = &v
+		}
+		if v, ok := fl.Specs["KeyTCPDst"].(uint16); ok {
+			flower.KeyTCPDst = &v
+		}
+		if v, ok := fl.Specs["KeyUDPSrc"].(uint16); ok {
+			flower.KeyUDPSrc = &v
+		}
+		if v, ok := fl.Specs["KeyUDPDst"].(uint16); ok {
+			flower.KeyUDPDst = &v
+		}
+		if v, ok := fl.Specs["KeyVlanID"].(uint16); ok {
+			flower.KeyVlanID = &v
+		}
+		if v, ok := fl.Specs["KeyVlanPrio"].(uint8); ok {
+			flower.KeyVlanPrio = &v
+		}
+		if v, ok := fl.Specs["KeyVlanEthType"].(uint16); ok {
+			flower.KeyVlanEthType = &v
+		}
+		if v, ok := fl.Specs["KeyEncKeyID"].(uint32); ok {
+			flower.KeyEncKeyID = &v
+		}
+		if v, ok := fl.Specs["KeyEncIPv4Src"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPv4SrcMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPv4Dst"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPv4DstMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyTCPSrcMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyTCPDstMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyUDPSrcMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyUDPDstMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeySctpSrc"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeySctpDst"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncUDPSrcPort"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncUDPSrcPortMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncUDPDstPort"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncUDPDstPortMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyFlags"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyFlagsMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIcmpv4Code"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIcmpv4CodeMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIcmpv4Type"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIcmpv4TypeMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIcmpv6Code"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIcmpv6CodeMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyArpSIP"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyArpSIPMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyArpTIP"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyArpTIPMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyArpOp"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyArpOpMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyMplsTTL"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyMplsBos"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyMplsTc"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyMplsLabel"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyTCPFlags"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyTCPFlagsMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIPTOS"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIPTOSMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIPTTL"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyIPTTLMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyCVlanID"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyCVlanPrio"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyCVlanEthType"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPTOS"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPTOSMask"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPTTL"]; ok {
+			
+		}
+		if v, ok := fl.Specs["KeyEncIPTTLMask"]; ok {
+			
+		}
 	case "fw":
 		fw := &tc.Fw{}
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
