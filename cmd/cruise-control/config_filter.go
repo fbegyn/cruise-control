@@ -163,7 +163,6 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32, actionMap ma
 		}
 	case "flower":
 		flower := &tc.Flower{}
-		fmt.Println(fl.Specs)
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
 			flower.ClassID = &v
 		}
@@ -471,7 +470,10 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32, actionMap ma
 			temp := uint32(v)
 			flower.InHwCount = &temp
 		}
-		fmt.Println(flower)
+		attrs = tc.Attribute{
+			Kind: fl.Type,
+			Flower: flower,
+		}
 	case "fw":
 		fw := &tc.Fw{}
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {

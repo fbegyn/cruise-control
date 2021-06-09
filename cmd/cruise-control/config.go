@@ -1,8 +1,5 @@
 package main
 
-import (
-)
-
 // Parse the handles into useable uint32 formates. Returns a map that can be used
 // to look up the handle of any object. Each handle parser has the same behavior, but
 // needs to be create for each config type (no generics)
@@ -75,6 +72,7 @@ func lookupObjectParent(parentMap map[string]uint32, object string) (parent uint
 	found = true
 	return
 }
+
 // looks up the handle and parent of an object and returns the uint32 forms
 func lookupObjectHandleParent(handleMap, parentMap map[string]uint32, object string) (handle, parent uint32, found bool) {
 	handle, found = lookupObjectHandle(handleMap, object)
