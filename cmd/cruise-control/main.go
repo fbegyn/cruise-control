@@ -83,12 +83,14 @@ func main() {
 		os.Exit(9)
 	}
 
+	actionMap := map[string][]*tc.Action{}
+
 	// compose TC objects into maps of each type. we could also create a single
 	// map of tc.Objects but that what probably include som wizardly or adding a
 	// field to the objects configs to determine the type.
 	qdMap, _ := composeQdiscs(handleMap, parentMap, conf.Qdiscs, interf)
 	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
-	flMap, _ := composeFilters(handleMap, parentMap, conf.Filters, interf)
+	flMap, _ := composeFilters(handleMap, parentMap, actionMap, conf.Filters, interf)
 
 	// construct tc qdiscs and classes into an array
 	var nodes []*Node
@@ -129,9 +131,9 @@ func main() {
 	}()
 
 	if len(nodes) == 0 {
-		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over","tree","config")
+		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over", "tree", "config")
 	} else {
-		logger.Log("level", "INFO", "msg", "some nodes left over","tree","config")
+		logger.Log("level", "INFO", "msg", "some nodes left over", "tree", "config")
 	}
 
 	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index), handleMap)
@@ -139,22 +141,21 @@ func main() {
 		systemTree, index := FindRootNode(systemNodes)
 		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
 		systemTree.ComposeChildren(systemNodes)
-		if !systemTree.CompareTree(*tree){
-		    logger.Log("level","INFO","msg","updating config")
-		    systemTree.DeleteNode(rtnl)
-		    tree.ApplyNode(rtnl)
+		if !systemTree.CompareTree(*tree) {
+			logger.Log("level", "INFO", "msg", "updating config")
+			systemTree.DeleteNode(rtnl)
+			tree.ApplyNode(rtnl)
 		} else {
-		    logger.Log("level","INFO","msg","system already up to date")
+			logger.Log("level", "INFO", "msg", "system already up to date")
 		}
 	} else {
-		logger.Log("level","INFO","msg","no config found, applying config file")
+		logger.Log("level", "INFO", "msg", "no config found, applying config file")
 		tree.ApplyNode(rtnl)
 	}
 
-	
-	logger.Log("level","INFO","msg","applying filters")
+	logger.Log("level", "INFO", "msg", "applying filters")
 	for _, filt := range filters {
-		logger.Log("level","INFO","msg","applying filter", "filterID", filt.Object.Msg.Handle, "parent", filt.Object.Msg.Parent)
+		logger.Log("level", "INFO", "msg", "applying filter", "filterID", filt.Object.Msg.Handle, "parent", filt.Object.Msg.Parent)
 		filt.ApplyNode(rtnl)
 	}
 }

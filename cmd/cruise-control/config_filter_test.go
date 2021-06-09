@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/florianl/go-tc"
 	"github.com/spf13/viper"
 )
 
@@ -47,8 +48,9 @@ filterID = 10
 		t.Fatalf("failed to unmarshal config into filter config: %v", err)
 	}
 
+	actionMap := map[string][]*tc.Action{}
 	// do stuff
-	attrs, err := parseFilterAttrs(flConfig, handleMap)
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
 
 	// check the returned attrs
 	if attrs.Kind != "flow" {
@@ -126,11 +128,15 @@ func TestConfigFlFlower(t *testing.T) {
 type = "flower"
 filterID = 10
 [filter."testing".specs]
-        ClassID = "testingClass"
+    ClassID = "testingClass"
 	Indev = "testIf"
-	Actions = 2            
-	KeyEthType = 3          
-	KeyIPProto = 4       
+	Actions = "reject-things"          
+	KeyEthDst = "38:68:93:8b:8d:55"
+	KeyEthDstMask = "ff:ff:ff:ff:ff:ff"
+	KeyEthSrc = "38:68:93:8b:8d:55"
+	KeyEthSrcMask = "ff:ff:ff:ff:ff:ff"
+	KeyEthType = 3 
+	KeyIPProto = 4                
 	KeyIPv4Src = "192.10.0.1"       
 	KeyIPv4SrcMask = 24
 	KeyIPv4Dst = "192.10.0.2"   
@@ -138,7 +144,8 @@ filterID = 10
 	KeyTCPSrc = 9   
 	KeyTCPDst = 10        
 	KeyUDPSrc = 11        
-	KeyUDPDst = 12           
+	KeyUDPDst = 12   
+	Flags = 12        
 	KeyVlanID = 13       
 	KeyVlanPrio = 14       
 	KeyVlanEthType = 15     
@@ -187,12 +194,15 @@ filterID = 10
 	KeyEncIPTOS = 58  
 	KeyEncIPTOSMask = 59     
 	KeyEncIPTTL = 60 
-	KeyEncIPTTLMask = 61     
+	KeyEncIPTTLMask = 61  
+	InHwCount = 62   
 `)
 	handleMap := map[string]uint32{
-		"testing":   1,
-		"testClass": 100,
+		"testing":      1,
+		"testingClass": 100,
 	}
+
+	actionMap := map[string][]*tc.Action{}
 
 	// load in the raw bytes
 	ViperLoadBytes(testConfig)
@@ -205,7 +215,7 @@ filterID = 10
 	}
 
 	// do stuff
-	_, err = parseFilterAttrs(flConfig, handleMap)
+	_, err = parseFilterAttrs(flConfig, handleMap, actionMap)
 
 	// check the returned attrs
 	// if attrs.Kind != "flow" {
@@ -241,8 +251,10 @@ filterID = 10
 		t.Fatalf("failed to unmarshal config into filter config: %v", err)
 	}
 
+	actionMap := map[string][]*tc.Action{}
+
 	// do stuff
-	attrs, err := parseFilterAttrs(flConfig, handleMap)
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
 
 	// check the returned attrs
 	if attrs.Kind != "route" {

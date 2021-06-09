@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
 
 	"github.com/florianl/go-tc"
 	"golang.org/x/sys/unix"
@@ -47,6 +48,7 @@ func parseFilterParents(
 // given a map of filters, contstruct a map with tc objects of those filters
 func composeFilters(
 	handleMap, parentMap map[string]uint32,
+	actionMap map[string][]*tc.Action,
 	filterConfigs map[string]FilterConfig,
 	interf *net.Interface,
 ) (map[string]*tc.Object, error) {
@@ -64,7 +66,7 @@ func composeFilters(
 			Handle:  handle,
 			Parent:  parent,
 		}
-		attrs, err := parseFilterAttrs(filt, handleMap)
+		attrs, err := parseFilterAttrs(filt, handleMap, actionMap)
 		filter := &tc.Object{
 			Msg:       msg,
 			Attribute: attrs,
@@ -81,7 +83,7 @@ func composeFilters(
 }
 
 // parse the filter attributes from the config file
-func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.Attribute, err error) {
+func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32, actionMap map[string][]*tc.Action) (attrs tc.Attribute, err error) {
 	switch fl.Type {
 	case "basic":
 		basic := &tc.Basic{}
@@ -92,7 +94,7 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 			basic.Police = &v
 		}
 		attrs = tc.Attribute{
-			Kind: fl.Type,
+			Kind:  fl.Type,
 			Basic: basic,
 		}
 	case "route":
@@ -114,7 +116,7 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 			route.IIf = &temp
 		}
 		attrs = tc.Attribute{
-			Kind: fl.Type,
+			Kind:   fl.Type,
 			Route4: route,
 		}
 	case "flow":
@@ -162,34 +164,81 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 	case "flower":
 		flower := &tc.Flower{}
 		fmt.Println(fl.Specs)
-		if v, ok := fl.Specs["classid"].(string); ok {
-			temp := handleMap[v]
-			flower.ClassID = &temp
+		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
+			flower.ClassID = &v
 		}
 		if v, ok := fl.Specs["indev"].(string); ok {
 			flower.Indev = &v
 		}
-		// Actions = 2            
+		if v, ok := actionMap[fl.Specs["actions"].(string)]; ok {
+			flower.Actions = &v
+		}
+		if v, ok := fl.Specs["keyethsrc"].(string); ok {
+			temp, err := net.ParseMAC(v)
+			if err != nil {
+				os.Exit(10)
+			}
+			flower.KeyEthSrc = &temp
+		}
+		if v, ok := fl.Specs["keyethsrcmask"].(string); ok {
+			temp, err := net.ParseMAC(v)
+			if err != nil {
+				os.Exit(10)
+			}
+			flower.KeyEthSrcMask = &temp
+		}
+
+		if v, ok := fl.Specs["keyethdst"].(string); ok {
+			temp, err := net.ParseMAC(v)
+			if err != nil {
+				os.Exit(10)
+			}
+			flower.KeyEthDst = &temp
+		}
+		if v, ok := fl.Specs["keyethdstmask"].(string); ok {
+			temp, err := net.ParseMAC(v)
+			if err != nil {
+				os.Exit(10)
+			}
+			flower.KeyEthDstMask = &temp
+		}
+
 		if v, ok := fl.Specs["keyethtype"].(int64); ok {
 			temp := uint16(v)
 			flower.KeyEthType = &temp
 		}
-		if v, ok := fl.Specs["keyipproto"].(uint8); ok {
-			flower.KeyIPProto = &v
+		if v, ok := fl.Specs["keyipproto"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIPProto = &temp
 		}
-		if v, ok := fl.Specs["keyipv4src"].(string); ok {
-			temp := net.ParseIP(v)
-			flower.KeyIPv4Src = &temp
-		}
-		//if v, ok := fl.Specs["KeyIPv4SrcMask"].(uint32); ok {
 
-		//}
-		if v, ok := fl.Specs["keyipv4dst"].(string); ok {
-			temp := net.ParseIP(v)
-			flower.KeyIPv4Dst = &temp
+		ip4src, ipok := fl.Specs["keyipv4src"].(string)
+		ip4srcmask, maskok := fl.Specs["keyipv4srcmask"].(int64)
+		if ipok && maskok {
+			cidr := fmt.Sprintf("%s/%d", ip4src, ip4srcmask)
+
+			ip, net, err := net.ParseCIDR(cidr)
+			if err != nil {
+				os.Exit(10)
+			}
+			flower.KeyIPv4Src = &ip
+			flower.KeyIPv4SrcMask = &net.Mask
+
 		}
-		//if v, ok := fl.Specs["KeyIPv4DstMask"].(uint32); ok {
-		//}
+
+		ip4dst, ipok := fl.Specs["keyipv4dst"].(string)
+		ip4dstmask, maskok := fl.Specs["keyipv4dstmask"].(int64)
+		if ipok && maskok {
+			cidr := fmt.Sprintf("%s/%d", ip4dst, ip4dstmask)
+
+			ip, net, err := net.ParseCIDR(cidr)
+			if err != nil {
+				os.Exit(10)
+			}
+			flower.KeyIPv4Dst = &ip
+			flower.KeyIPv4DstMask = &net.Mask
+
+		}
 		if v, ok := fl.Specs["keytcpsrc"].(int64); ok {
 			temp := uint16(v)
 			flower.KeyTCPSrc = &temp
@@ -210,7 +259,7 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 			temp := uint16(v)
 			flower.KeyVlanID = &temp
 		}
-		if v, ok := fl.Specs["keyvlanprio"].(uint8); ok {
+		if v, ok := fl.Specs["keyvlanprio"].(int64); ok {
 			temp := uint8(v)
 			flower.KeyVlanPrio = &temp
 		}
@@ -218,24 +267,38 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 			temp := uint16(v)
 			flower.KeyVlanEthType = &temp
 		}
-		if v, ok := fl.Specs["keyenckeyid"].(uint32); ok {
+		if v, ok := fl.Specs["keyenckeyid"].(int64); ok {
 			temp := uint32(v)
 			flower.KeyEncKeyID = &temp
 		}
-		if v, ok := fl.Specs["keyencipv4src"].(string); ok {
-			ip := net.ParseIP(v)
+
+		ip4encsrc, ipok := fl.Specs["keyipv4dst"].(string)
+		ip4encsrcmask, maskok := fl.Specs["keyipv4dstmask"].(int64)
+		if ipok && maskok {
+			cidr := fmt.Sprintf("%s/%d", ip4encsrc, ip4encsrcmask)
+
+			ip, net, err := net.ParseCIDR(cidr)
+			if err != nil {
+				os.Exit(10)
+			}
 			flower.KeyEncIPv4Src = &ip
+			flower.KeyEncIPv4SrcMask = &net.Mask
+
 		}
-		//if v, ok := fl.Specs["KeyEncIPv4SrcMask"]; ok {
-		//	
-		//}
-		if v, ok := fl.Specs["keyencipv4dst"].(string); ok {
-			ip := net.ParseIP(v)
+
+		ip4encdst, ipok := fl.Specs["keyencipv4dst"].(string)
+		ip4encdstmask, maskok := fl.Specs["keyencipv4dstmask"].(int64)
+		if ipok && maskok {
+			cidr := fmt.Sprintf("%s/%d", ip4encdst, ip4encdstmask)
+
+			ip, net, err := net.ParseCIDR(cidr)
+			if err != nil {
+				os.Exit(10)
+			}
 			flower.KeyEncIPv4Dst = &ip
+			flower.KeyEncIPv4DstMask = &net.Mask
+
 		}
-		//if v, ok := fl.Specs["KeyEncIPv4DstMask"]; ok {
-		//	
-		//}
 		if v, ok := fl.Specs["keytcpsrcmask"].(int64); ok {
 			temp := uint16(v)
 			flower.KeyTCPSrcMask = &temp
@@ -260,114 +323,154 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 			temp := uint16(v)
 			flower.KeySctpDst = &temp
 		}
-		//if v, ok := fl.Specs["KeyEncUDPSrcPort"].(uint16); ok {
-		//	flower.KeyEncUDPSrcPort = &temp
-		//}
-		//if v, ok := fl.Specs["KeyEncUDPSrcPortMask"].(uint16); ok {
-		//	flower.KeyEncUDPSrcPortMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyEncUDPDstPort"].(uint16); ok {
-		//	flower.KeyEncUDPDstPort = &temp
-		//}
-		//if v, ok := fl.Specs["KeyEncUDPDstPortMask"].(uint16); ok {
-		//	flower.KeyEncUDPDstPortMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyFlags"].(uint32); ok {
-		//	flower.KeyFlags = &temp
-		//}
-		//if v, ok := fl.Specs["KeyFlagsMask"].(uint32); ok {
-		//	flower.KeyFlagsMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIcmpv4Code"].(uint8); ok {
-		//	flower.KeyIcmpv4Code = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIcmpv4CodeMask"].(uint8); ok {
-		//	flower.KeyIcmpv4CodeMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIcmpv4Type"].(uint8); ok {
-		//	flower.KeyIcmpv4Type = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIcmpv4TypeMask"].(uint8); ok {
-		//	flower.KeyIcmpv4TypeMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIcmpv6Code"].(uint8); ok {
-		//	flower.KeyIcmpv6Code = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIcmpv6CodeMask"].(uint8); ok {
-		//	flower.KeyIcmpv6CodeMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyArpSIP"].(uint32); ok {
-		//	flower.KeyArpSIP = &temp
-		//}
-		//if v, ok := fl.Specs["KeyArpSIPMask"].(uint32); ok {
-		//	flower.KeyArpSIPMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyArpTIP"].(uint32); ok {
-		//	flower.KeyArpTIP = &temp
-		//}
-		//if v, ok := fl.Specs["KeyArpTIPMask"].(uint32); ok {
-		//	flower.KeyArpTIPMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyArpOp"].(uint8); ok {
-		//	flower.KeyArpOp = &temp
-		//}
-		//if v, ok := fl.Specs["KeyArpOpMask"].(uint8); ok {
-		//	flower.KeyArpOpMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyMplsTTL"].(uint8); ok {
-		//	flower.KeyMplsTTL = &temp
-		//}
-		//if v, ok := fl.Specs["KeyMplsBos"].(uint8); ok {
-		//	flower.KeyMplsBos = &temp
-		//}
-		//if v, ok := fl.Specs["KeyMplsTc"].(uint8); ok {
-		//	flower.KeyMplsTc = &temp
-		//}
-		//if v, ok := fl.Specs["KeyMplsLabel"].(uint32); ok {
-		//	flower.KeyMplsLabel = &temp
-		//}
-		//if v, ok := fl.Specs["KeyTCPFlags"].(uint16); ok {
-		//	flower.KeyTCPFlags = &temp
-		//}
-		//if v, ok := fl.Specs["KeyTCPFlagsMask"].(uint16); ok {
-		//	flower.KeyTCPFlagsMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIPTOS"].(uint8); ok {
-		//	flower.KeyIPTOS = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIPTOSMask"].(uint8); ok {
-		//	flower.KeyIPTOSMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIPTTL"].(uint8); ok {
-		//	flower.KeyIPTTL = &temp
-		//}
-		//if v, ok := fl.Specs["KeyIPTTLMask"].(uint8); ok {
-		//	flower.KeyIPTTLMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyCVlanID"].(uint16); ok {
-		//	flower.KeyCVlanID = &temp
-		//}
-		//if v, ok := fl.Specs["KeyCVlanPrio"].(uint8); ok {
-		//	flower.KeyCVlanPrio = &temp
-		//}
-		//if v, ok := fl.Specs["KeyCVlanEthType"].(uint16); ok {
-		//	flower.KeyCVlanEthType = &temp
-		//}
-		//if v, ok := fl.Specs["KeyEncIPTOS"].(uint8); ok {
-		//	flower.KeyEncIPTOS = &temp
-		//}
-		//if v, ok := fl.Specs["KeyEncIPTOSMask"].(uint8); ok {
-		//	flower.KeyEncIPTOSMask = &temp
-		//}
-		//if v, ok := fl.Specs["KeyEncIPTTL"].(uint8); ok {
-		//	flower.KeyEncIPTTL = &temp
-		//}
-		//if v, ok := fl.Specs["keyencipttlmask"].(uint8); ok {
-		//	flower.KeyEncIPTTLMask = &temp
-		//}
-		//if v, ok := fl.Specs["inhwcount"].(uint32); ok {
-		//	flower.InHwCount = &temp
-		//}
+		if v, ok := fl.Specs["keyencudpsrcport"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyEncUDPSrcPort = &temp
+		}
+		if v, ok := fl.Specs["keyencudpsrcportmask"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyEncUDPSrcPortMask = &temp
+		}
+		if v, ok := fl.Specs["keyencudpdstport"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyEncUDPDstPort = &temp
+		}
+		if v, ok := fl.Specs["keyencudpdstportmask"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyEncUDPDstPortMask = &temp
+		}
+		if v, ok := fl.Specs["keyflags"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyFlags = &temp
+		}
+		if v, ok := fl.Specs["keyflagsmask"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyFlagsMask = &temp
+		}
+		if v, ok := fl.Specs["keyicmpv4code"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIcmpv4Code = &temp
+		}
+		if v, ok := fl.Specs["keyicmpv4codemask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIcmpv4CodeMask = &temp
+		}
+		if v, ok := fl.Specs["keyicmpv4type"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIcmpv4Type = &temp
+		}
+		if v, ok := fl.Specs["keyicmpv4typemask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIcmpv4TypeMask = &temp
+		}
+		if v, ok := fl.Specs["keyicmpv6code"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIcmpv6Code = &temp
+		}
+		if v, ok := fl.Specs["keyicmpv6codemask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIcmpv6CodeMask = &temp
+		}
+		if v, ok := fl.Specs["keyarpsip"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyArpSIP = &temp
+		}
+		if v, ok := fl.Specs["keyarpsipmask"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyArpSIPMask = &temp
+		}
+		if v, ok := fl.Specs["keyarptip"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyArpTIP = &temp
+		}
+		if v, ok := fl.Specs["keyarptipmask"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyArpTIPMask = &temp
+		}
+		if v, ok := fl.Specs["keyarpop"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyArpOp = &temp
+		}
+		if v, ok := fl.Specs["keyarpopmask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyArpOpMask = &temp
+		}
+		if v, ok := fl.Specs["keymplsttl"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyMplsTTL = &temp
+		}
+		if v, ok := fl.Specs["keymplsbos"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyMplsBos = &temp
+		}
+		if v, ok := fl.Specs["keymplstc"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyMplsTc = &temp
+		}
+		if v, ok := fl.Specs["keymplslabel"].(int64); ok {
+			temp := uint32(v)
+			flower.KeyMplsLabel = &temp
+		}
+		if v, ok := fl.Specs["keytcpflags"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyTCPFlags = &temp
+		}
+		if v, ok := fl.Specs["keytcpflagsmask"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyTCPFlagsMask = &temp
+		}
+		if v, ok := fl.Specs["keyiptos"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIPTOS = &temp
+		}
+		if v, ok := fl.Specs["keyiptosmask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIPTOSMask = &temp
+		}
+		if v, ok := fl.Specs["keyipttl"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIPTTL = &temp
+		}
+		if v, ok := fl.Specs["keyipttlmask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyIPTTLMask = &temp
+		}
+		if v, ok := fl.Specs["flags"].(int64); ok {
+			temp := uint32(v)
+			flower.Flags = &temp
+		}
+		if v, ok := fl.Specs["keycvlanid"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyCVlanID = &temp
+		}
+		if v, ok := fl.Specs["keycvlanprio"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyCVlanPrio = &temp
+		}
+		if v, ok := fl.Specs["keycvlanethtype"].(int64); ok {
+			temp := uint16(v)
+			flower.KeyCVlanEthType = &temp
+		}
+		if v, ok := fl.Specs["keyenciptos"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyEncIPTOS = &temp
+		}
+		if v, ok := fl.Specs["keyenciptosmask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyEncIPTOSMask = &temp
+		}
+		if v, ok := fl.Specs["keyencipttl"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyEncIPTTL = &temp
+		}
+		if v, ok := fl.Specs["keyencipttlmask"].(int64); ok {
+			temp := uint8(v)
+			flower.KeyEncIPTTLMask = &temp
+		}
+		if v, ok := fl.Specs["inhwcount"].(int64); ok {
+			temp := uint32(v)
+			flower.InHwCount = &temp
+		}
 		fmt.Println(flower)
 	case "fw":
 		fw := &tc.Fw{}
@@ -380,12 +483,13 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 		if v, ok := fl.Specs["inDev"].(string); ok {
 			fw.InDev = &v
 		}
-		if v, ok := fl.Specs["mask"].(uint32); ok {
-			fw.Mask = &v
+		if v, ok := fl.Specs["mask"].(int64); ok {
+			temp := uint32(v)
+			fw.Mask = &temp
 		}
 		attrs = tc.Attribute{
 			Kind: fl.Type,
-			Fw: fw,
+			Fw:   fw,
 		}
 	case "u32":
 		u32 := &tc.U32{}
@@ -412,17 +516,21 @@ func parseFilterAttrs(fl FilterConfig, handleMap map[string]uint32) (attrs tc.At
 		if v, ok := handleMap[fl.Specs["classid"].(string)]; ok {
 			tcindex.ClassID = &v
 		}
-		if v, ok := fl.Specs["hash"].(uint32); ok {
-			tcindex.Hash = &v
+		if v, ok := fl.Specs["hash"].(int64); ok {
+			temp := uint32(v)
+			tcindex.Hash = &temp
 		}
-		if v, ok := fl.Specs["mask"].(uint16); ok {
-			tcindex.Mask = &v
+		if v, ok := fl.Specs["mask"].(int64); ok {
+			temp := uint16(v)
+			tcindex.Mask = &temp
 		}
-		if v, ok := fl.Specs["shift"].(uint32); ok {
-			tcindex.Shift = &v
+		if v, ok := fl.Specs["shift"].(int64); ok {
+			temp := uint32(v)
+			tcindex.Shift = &temp
 		}
-		if v, ok := fl.Specs["fallthrough"].(uint32); ok {
-			tcindex.FallThrough = &v
+		if v, ok := fl.Specs["fallthrough"].(int64); ok {
+			temp := uint32(v)
+			tcindex.FallThrough = &temp
 		}
 	}
 	return attrs, nil
