@@ -16,13 +16,59 @@ func ViperLoadBytes(raw []byte) {
 	viper.ReadConfig(bytes.NewBuffer(raw))
 }
 
+func TestConfigFlBasic(t *testing.T) {
+	// declare a testing config
+	testConfig := []byte(`
+112
+`)
+
+	handleMap := map[string]uint32{
+		"testing":   1,
+		"testClass": 100,
+	}
+
+	// load in the raw bytes
+	ViperLoadBytes(testConfig)
+
+	// unmarshal into the filter config struct
+	flConfig := FilterConfig{}
+	err := viper.UnmarshalKey("filter.testing", &flConfig)
+	if err != nil {
+		t.Fatalf("failed to unmarshal config into filter config: %v", err)
+	}
+
+	actionMap := map[string][]*tc.Action{}
+
+	// do stuff
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
+	if err != nil {
+		t.Fatalf("failed to parse filter attributes: %v", err)
+	}
+
+	if attrs.Kind != "fw" {
+		t.Fatalf("did not get expected 'fw' kind, got %v", attrs.Kind)
+	}
+
+	if *attrs.Fw.ClassID != 100 {
+		t.Fatalf("did not get expected classID 100, got %v", attrs.Matchall.ClassID)
+	}
+
+	if *attrs.Fw.Mask != 10 {
+		t.Fatalf("did not popuelate fw.mask pointer, is still nil")
+	}
+
+	if *attrs.Fw.InDev != "lan0" {
+		t.Fatalf("did not popuelate fw.indev pointer, is still nil")
+	}
+}
+
 func TestConfigFlFlow(t *testing.T) {
 	// declare a testing config
 	testConfig := []byte(`
 [filter."testing"]
 type = "flow"
 filterID = 10
-[filter."testing".specs]
+	[filter."testing".specs]
     keys = 1
     mode = 2
     baseclass = 3
@@ -54,7 +100,7 @@ filterID = 10
 
 	// check the returned attrs
 	if attrs.Kind != "flow" {
-		t.Fatalf("did get expected 'route' kind, got %v", attrs.Kind)
+		t.Fatalf("did not get expected 'flow' kind, got %v", attrs.Kind)
 	}
 
 	if attrs.Flow.Keys == nil {
@@ -127,7 +173,7 @@ func TestConfigFlFlower(t *testing.T) {
 [filter."testing"]
 type = "flower"
 filterID = 10
-[filter."testing".specs]
+	[filter."testing".specs]
     ClassID = "testingClass"
     Indev = "testIf"
     Actions = "reject-things"          
@@ -215,24 +261,28 @@ filterID = 10
 	}
 
 	// do stuff
-	_, err = parseFilterAttrs(flConfig, handleMap, actionMap)
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
 	if err != nil {
 		t.Fatalf("failed to parse filter attributes: %v", err)
 	}
 
 	// check the returned attrs
-	// if attrs.Kind != "flow" {
-	// 	t.Fatalf("did get expected 'route' kind, got %v", attrs.Kind)
-	// }
+	if attrs.Kind != "flower" {
+		t.Fatalf("did not get expected 'flower' kind, got %v", attrs.Kind)
+	}
+
+	if attrs.Flower == nil {
+		t.Fatalf("did not popuelate flower pointer, is still nil")
+	}
 }
 
 func TestConfigFlRoute(t *testing.T) {
 	// declare a testing config
 	testConfig := []byte(`
 [filter."testing"]
-type = "route"
+type = "route4"
 filterID = 10
-[filter."testing".specs]
+	[filter."testing".specs]
     from = 2
     to = 3
     iif = 4
@@ -263,8 +313,8 @@ filterID = 10
 	}
 
 	// check the returned attrs
-	if attrs.Kind != "route" {
-		t.Fatalf("did get expected 'route' kind, got %v", attrs.Kind)
+	if attrs.Kind != "route4" {
+		t.Fatalf("did not get expected 'route' kind, got %v", attrs.Kind)
 	}
 
 	if attrs.Route4.ClassID == nil {
@@ -293,5 +343,270 @@ filterID = 10
 	}
 	if *attrs.Route4.IIf != 4 {
 		t.Fatalf("did not get expected route.IIf, got %v", *attrs.Route4.IIf)
+	}
+}
+
+func TestConfigFlU32(t *testing.T) {
+	// declare a testing config
+	testConfig := []byte(`
+[filter."testing"]
+type = "u32"
+filterID = 10
+	[filter."testing".specs]
+	classID = "testClass"
+	hash = 1
+	link = 2
+	divisor = 3
+	indev = "lan0"
+	pcnt = 10
+	flags = 12
+		[filter."testing".specs.mark]
+		mask = 0x1f
+		[filter."testing".specs.sel]
+		Flags    = 1
+		Offshift = 1
+		NKeys    = 1
+		OffMask  = 2
+		Off      = 2
+		Offoff   = 2
+		Hoff     = 2
+		Hmask    = 3
+			[filter."testing".specs.sel.keys]
+			Mask    = 4
+			Val     = 4
+			Off     = 4
+			OffMask = 4
+		[filter."testing".specs.police]
+		AvRate     = 5
+		Result     = 5
+		Rate64     = 6
+		PeakRate64 = 6
+			[filter."testing".specs.police.tbf]
+			[filter."testing".specs.police.rate]
+			[filter."testing".specs.police.peakrate]
+			[filter."testing".specs.police.tm]
+		[[filter."testing".specs.action]]
+		name = "ban"
+		[[filter."testing".specs.action]]
+		name = "restrict"
+`)
+
+	handleMap := map[string]uint32{
+		"testing":   1,
+		"testClass": 100,
+	}
+
+	// load in the raw bytes
+	ViperLoadBytes(testConfig)
+
+	// unmarshal into the filter config struct
+	flConfig := FilterConfig{}
+	err := viper.UnmarshalKey("filter.testing", &flConfig)
+	if err != nil {
+		t.Fatalf("failed to unmarshal config into filter config: %v", err)
+	}
+
+	actionMap := map[string][]*tc.Action{}
+
+	// do stuff
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
+	if err != nil {
+		t.Fatalf("failed to parse filter attributes: %v", err)
+	}
+
+	if attrs.Kind != "u32" {
+		t.Fatalf("did not get expected 'u32' kind, got %v", attrs.Kind)
+	}
+
+	if attrs.U32 == nil {
+		t.Fatalf("did not popuelate u32 pointer, is still nil")
+	}
+	if attrs.U32.Mark == nil {
+		t.Fatalf("did not popuelate u32.mark pointer, is still nil")
+	}
+	if attrs.U32.Sel == nil {
+		t.Fatalf("did not popuelate u32.sel pointer, is still nil")
+	}
+}
+
+// func TestConfigFlRsvp(t *testing.T) {
+// 	// declare a testing config
+// 	testConfig := []byte(`
+// [filter."testing"]
+// type = "rsvp"
+// filterID = 10
+// 	[filter."testing".specs]
+// 	classID = "testClass"
+// 		[filter."testing".specs.pinfo]
+// 		Protocol  = 4
+// 		TunnelID  = 4
+// 		TunnelHdr = 4
+// 		Pad       = 4
+// 			[filter."testing".specs.dpi]
+// 			Key    = 6
+// 			Mask   = 6
+// 			Offset = 6
+// 			[filter."testing".specs.spi]
+// 			Key    = 6
+// 			Mask   = 6
+// 			Offset = 6
+// 		[filter."testing".specs.police]
+// 		AvRate     = 5
+// 		Result     = 5
+// 		Rate64     = 6
+// 		PeakRate64 = 6
+// 			[filter."testing".specs.police.tbf]
+// 			[filter."testing".specs.police.rate]
+// 			[filter."testing".specs.police.peakrate]
+// 			[filter."testing".specs.police.tm]
+// `)
+
+// 	handleMap := map[string]uint32{
+// 		"testing":   1,
+// 		"testClass": 100,
+// 	}
+
+// 	// load in the raw bytes
+// 	ViperLoadBytes(testConfig)
+
+// 	// unmarshal into the filter config struct
+// 	flConfig := FilterConfig{}
+// 	err := viper.UnmarshalKey("filter.testing", &flConfig)
+// 	if err != nil {
+// 		t.Fatalf("failed to unmarshal config into filter config: %v", err)
+// 	}
+
+// 	actionMap := map[string][]*tc.Action{}
+
+// 	// do stuff
+// 	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
+// 	if err != nil {
+// 		t.Fatalf("failed to parse filter attributes: %v", err)
+// 	}
+
+// 	if attrs.Kind != "u32" {
+// 		t.Fatalf("did not get expected 'u32' kind, got %v", attrs.Kind)
+// 	}
+
+// 	if attrs.U32 == nil {
+// 		t.Fatalf("did not popuelate u32 pointer, is still nil")
+// 	}
+// 	if attrs.U32.Mark == nil {
+// 		t.Fatalf("did not popuelate u32.mark pointer, is still nil")
+// 	}
+// 	if attrs.U32.Sel == nil {
+// 		t.Fatalf("did not popuelate u32.sel pointer, is still nil")
+// 	}
+// }
+
+func TestConfigFlMatchall(t *testing.T) {
+	// declare a testing config
+	testConfig := []byte(`
+[filter."testing"]
+type = "matchall"
+filterID = 10
+	[filter."testing".specs]
+	classID = "testClass"
+	flags = 10
+		[[filter."testing".specs.actions]]
+		name = "ban"
+		[[filter."testing".specs.actions]]
+		name = "reject"
+`)
+
+	handleMap := map[string]uint32{
+		"testing":   1,
+		"testClass": 100,
+	}
+
+	// load in the raw bytes
+	ViperLoadBytes(testConfig)
+
+	// unmarshal into the filter config struct
+	flConfig := FilterConfig{}
+	err := viper.UnmarshalKey("filter.testing", &flConfig)
+	if err != nil {
+		t.Fatalf("failed to unmarshal config into filter config: %v", err)
+	}
+
+	actionMap := map[string][]*tc.Action{}
+
+	// do stuff
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
+	if err != nil {
+		t.Fatalf("failed to parse filter attributes: %v", err)
+	}
+
+	if attrs.Kind != "matchall" {
+		t.Fatalf("did not get expected 'matchall' kind, got %v", attrs.Kind)
+	}
+
+	if *attrs.Matchall.ClassID != 100 {
+		t.Fatalf("did not get expected classID 100, got %v", attrs.Matchall.ClassID)
+	}
+
+	if attrs.Matchall == nil {
+		t.Fatalf("did not popuelate matchall pointer, is still nil")
+	}
+}
+
+func TestConfigFlFw(t *testing.T) {
+	// declare a testing config
+	testConfig := []byte(`
+[filter."testing"]
+type = "fw"
+filterID = 10
+	[filter."testing".specs]
+	classID = "testClass"
+	mask = 10
+	indev = "lan0"
+	[filter."testing".specs.police]
+	AvRate     = 5
+	Result     = 5
+	Rate64     = 6
+	PeakRate64 = 6
+		[filter."testing".specs.police.tbf]
+		[filter."testing".specs.police.rate]
+		[filter."testing".specs.police.peakrate]
+		[filter."testing".specs.police.tm]
+`)
+
+	handleMap := map[string]uint32{
+		"testing":   1,
+		"testClass": 100,
+	}
+
+	// load in the raw bytes
+	ViperLoadBytes(testConfig)
+
+	// unmarshal into the filter config struct
+	flConfig := FilterConfig{}
+	err := viper.UnmarshalKey("filter.testing", &flConfig)
+	if err != nil {
+		t.Fatalf("failed to unmarshal config into filter config: %v", err)
+	}
+
+	actionMap := map[string][]*tc.Action{}
+
+	// do stuff
+	attrs, err := parseFilterAttrs(flConfig, handleMap, actionMap)
+	if err != nil {
+		t.Fatalf("failed to parse filter attributes: %v", err)
+	}
+
+	if attrs.Kind != "fw" {
+		t.Fatalf("did not get expected 'fw' kind, got %v", attrs.Kind)
+	}
+
+	if *attrs.Fw.ClassID != 100 {
+		t.Fatalf("did not get expected classID 100, got %v", attrs.Matchall.ClassID)
+	}
+
+	if *attrs.Fw.Mask != 10 {
+		t.Fatalf("did not popuelate fw.mask pointer, is still nil")
+	}
+
+	if *attrs.Fw.InDev != "lan0" {
+		t.Fatalf("did not popuelate fw.indev pointer, is still nil")
 	}
 }
