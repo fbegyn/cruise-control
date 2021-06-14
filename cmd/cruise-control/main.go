@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+//go:generate go run ../gen/main.go ../gen/helpers.go
+
 // Config represents the config in struct shape
 type Config struct {
 	Interface string
