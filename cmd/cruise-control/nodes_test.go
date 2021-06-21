@@ -1,8 +1,8 @@
 package main
 
 import (
-	"testing"
 	"reflect"
+	"testing"
 
 	"github.com/florianl/go-tc"
 	"golang.org/x/sys/unix"
@@ -16,24 +16,21 @@ func TestNewNode(t *testing.T) {
 		expected *Node
 	}{
 		{"TestEmptyClass", "class_test1", "class", &Node{
-			Name:     "class_test1",
 			Type:     "class",
 			Children: []*Node{},
 		}},
 		{"TestEmptyQdisc", "qdisc_test1", "qdisc", &Node{
-			Name:     "qdisc_test1",
 			Type:     "qdisc",
 			Children: []*Node{},
 		}},
 		{"TestEmptyFilter", "filter_test1", "filter", &Node{
-			Name:     "filter_test1",
 			Type:     "filter",
 			Children: []*Node{},
 		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			result := NewNode(tt.name, tt.typ)
+			result := NewNode(tt.typ)
 			if !result.equalNode(*tt.expected) {
 				t.Errorf("Failed to create node with correct header. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
@@ -93,7 +90,6 @@ func TestNewNodeWithObject(t *testing.T) {
 		expected *Node
 	}{
 		{"TestQdisc", "qdisc_test1", "qdisc", testQdisc, &Node{
-			Name:     "qdisc_test1",
 			Type:     "qdisc",
 			Object:   testQdisc2,
 			Children: []*Node{},
@@ -101,7 +97,7 @@ func TestNewNodeWithObject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			result := NewNodeWithObject(tt.name, tt.typ, tt.object)
+			result := NewNodeWithObject(tt.typ, tt.object)
 			if !result.equalNode(*tt.expected) {
 				t.Errorf("Failed to create node with correct header. name: %s and type: %s\nGot: %v\nExpected: %v\n",
 					tt.name, tt.typ, result, tt.expected,
@@ -121,10 +117,10 @@ func TestNewNodeWithObject(t *testing.T) {
 	}
 }
 
-func TestAddChild(t *testing.T){
-	testNode := NewNode("parent", "testing")
-	testChild := NewNode("child", "testing")
-	t.Run("addChild", func(t *testing.T){
+func TestAddChild(t *testing.T) {
+	testNode := NewNode("testing")
+	testChild := NewNode("testing")
+	t.Run("addChild", func(t *testing.T) {
 		testNode.addChild(testChild)
 		if len(testNode.Children) != 1 {
 			t.Errorf("failed to add child to node")
@@ -139,10 +135,10 @@ func TestAddChild(t *testing.T){
 	})
 }
 
-func TestToParent(t *testing.T){
-	testNode := NewNode("parent", "testing")
-	testChild := NewNode("child", "testing")
-	t.Run("addToParent", func(t *testing.T){
+func TestToParent(t *testing.T) {
+	testNode := NewNode("testing")
+	testChild := NewNode("testing")
+	t.Run("addToParent", func(t *testing.T) {
 		testChild.addToParent(testNode)
 		if len(testNode.Children) != 1 {
 			t.Errorf("failed to add child to node")
@@ -157,10 +153,10 @@ func TestToParent(t *testing.T){
 	})
 }
 
-func TestDeleteChild(t *testing.T){
-	testNode := NewNode("parent", "testing")
-	testChild := NewNode("child", "testing")
-	t.Run("deleteChild", func(t *testing.T){
+func TestDeleteChild(t *testing.T) {
+	testNode := NewNode("testing")
+	testChild := NewNode("testing")
+	t.Run("deleteChild", func(t *testing.T) {
 		testNode.addChild(testChild)
 		testNode.addChild(testChild)
 		testNode.addChild(testChild)
@@ -186,7 +182,7 @@ func TestDeleteChild(t *testing.T){
 	})
 }
 
-func TestRelation(t *testing.T){
+func TestRelation(t *testing.T) {
 	parentObject := tc.Object{
 		Msg: tc.Msg{
 			Handle: 10,
@@ -200,11 +196,11 @@ func TestRelation(t *testing.T){
 		},
 	}
 
-	parent := NewNodeWithObject("parent","testing", parentObject)
-	child := NewNodeWithObject("child","testing", childObject)
+	parent := NewNodeWithObject("testing", parentObject)
+	child := NewNodeWithObject("testing", childObject)
 	childObject.Msg.Parent = 200
-	child2 := NewNodeWithObject("child2","testing", childObject)
-	t.Run("isChild", func(t *testing.T){
+	child2 := NewNodeWithObject("testing", childObject)
+	t.Run("isChild", func(t *testing.T) {
 		if !parent.isChild(*child) {
 			t.Errorf("child is not related to parent")
 		}
@@ -213,7 +209,7 @@ func TestRelation(t *testing.T){
 			t.Errorf("child is not related to parent")
 		}
 	})
-	t.Run("isChildFail", func(t *testing.T){
+	t.Run("isChildFail", func(t *testing.T) {
 		if parent.isChild(*child2) {
 			t.Errorf("child should not be related to parent")
 		}
@@ -223,12 +219,12 @@ func TestRelation(t *testing.T){
 	})
 }
 
-func TestCompare(t *testing.T){
+func TestCompare(t *testing.T) {
 	node1Object := tc.Object{
 		Msg: tc.Msg{
 			Ifindex: 1,
-			Handle: 11,
-			Parent: 10,
+			Handle:  11,
+			Parent:  10,
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -241,8 +237,8 @@ func TestCompare(t *testing.T){
 	node2Object := tc.Object{
 		Msg: tc.Msg{
 			Ifindex: 1,
-			Handle: 11,
-			Parent: 10,
+			Handle:  11,
+			Parent:  10,
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -256,8 +252,8 @@ func TestCompare(t *testing.T){
 	node3Object := tc.Object{
 		Msg: tc.Msg{
 			Ifindex: 4,
-			Handle: 11,
-			Parent: 10,
+			Handle:  11,
+			Parent:  10,
 		},
 		Attribute: tc.Attribute{
 			Kind: "fq_codel",
@@ -267,11 +263,11 @@ func TestCompare(t *testing.T){
 		},
 	}
 
-	node1 := NewNodeWithObject("node1","testing", node1Object)
-	node2 := NewNodeWithObject("node2","testing", node2Object)
-	node3 := NewNodeWithObject("node3","testing", node3Object)
+	node1 := NewNodeWithObject("testing", node1Object)
+	node2 := NewNodeWithObject("testing", node2Object)
+	node3 := NewNodeWithObject("testing", node3Object)
 
-	t.Run("compareMsg", func(t *testing.T){
+	t.Run("compareMsg", func(t *testing.T) {
 		if !node1.equalMsg(*node2) {
 			t.Errorf("2 objects with the same Msg are not comparing correctly")
 		}
@@ -290,7 +286,7 @@ func TestCompare(t *testing.T){
 		}
 	})
 
-	t.Run("compareKind", func(t *testing.T){
+	t.Run("compareKind", func(t *testing.T) {
 		if !node1.equalKind(*node2) {
 			t.Errorf("2 objects with the same Attrs are not comparing as false")
 		}
