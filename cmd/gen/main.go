@@ -5,9 +5,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io/ioutil"
 	"math"
 	"net"
-	"os"
 
 	"github.com/florianl/go-tc"
 	"github.com/florianl/go-tc/core"
@@ -95,7 +95,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 0),
+			Handle:  core.BuildHandle(0x1, 0x0),
 			Parent:  tc.HandleRoot,
 		},
 		Attribute: tc.Attribute{
@@ -115,8 +115,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(11, 0),
-			Parent:  core.BuildHandle(1, 11),
+			Handle:  core.BuildHandle(0x11, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x11),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -124,8 +124,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(12, 0),
-			Parent:  core.BuildHandle(1, 12),
+			Handle:  core.BuildHandle(0x12, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x12),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -133,8 +133,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(31, 0),
-			Parent:  core.BuildHandle(1, 31),
+			Handle:  core.BuildHandle(0x31, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x31),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -142,8 +142,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(32, 0),
-			Parent:  core.BuildHandle(1, 32),
+			Handle:  core.BuildHandle(0x32, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x32),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -151,8 +151,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(22, 0),
-			Parent:  core.BuildHandle(1, 22),
+			Handle:  core.BuildHandle(0x22, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x22),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -160,8 +160,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(23, 0),
-			Parent:  core.BuildHandle(1, 23),
+			Handle:  core.BuildHandle(0x23, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x23),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -169,8 +169,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(3, 0),
-			Parent:  core.BuildHandle(1, 3),
+			Handle:  core.BuildHandle(0x3, 0x0),
+			Parent:  core.BuildHandle(0x1, 0x3),
 		},
 		Attribute: defaultFqCodel,
 	}
@@ -179,8 +179,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 1),
-			Parent:  core.BuildHandle(1, 0),
+			Handle:  core.BuildHandle(0x1, 0x1),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -199,8 +199,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 2),
-			Parent:  core.BuildHandle(1, 1),
+			Handle:  core.BuildHandle(0x1, 0x2),
+			Parent:  core.BuildHandle(0x1, 0x1),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -219,8 +219,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 21),
-			Parent:  core.BuildHandle(1, 2),
+			Handle:  core.BuildHandle(0x1, 0x21),
+			Parent:  core.BuildHandle(0x1, 0x2),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -238,8 +238,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 22),
-			Parent:  core.BuildHandle(1, 2),
+			Handle:  core.BuildHandle(0x1, 0x22),
+			Parent:  core.BuildHandle(0x1, 0x2),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -257,8 +257,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 23),
-			Parent:  core.BuildHandle(1, 2),
+			Handle:  core.BuildHandle(0x1, 0x23),
+			Parent:  core.BuildHandle(0x1, 0x2),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -276,8 +276,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 231),
-			Parent:  core.BuildHandle(1, 23),
+			Handle:  core.BuildHandle(0x1, 0x231),
+			Parent:  core.BuildHandle(0x1, 0x23),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -295,8 +295,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 2311),
-			Parent:  core.BuildHandle(1, 231),
+			Handle:  core.BuildHandle(0x1, 0x2311),
+			Parent:  core.BuildHandle(0x1, 0x231),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -314,8 +314,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 2312),
-			Parent:  core.BuildHandle(1, 231),
+			Handle:  core.BuildHandle(0x1, 0x2312),
+			Parent:  core.BuildHandle(0x1, 0x231),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -333,8 +333,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 232),
-			Parent:  core.BuildHandle(1, 23),
+			Handle:  core.BuildHandle(0x1, 0x232),
+			Parent:  core.BuildHandle(0x1, 0x23),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -352,8 +352,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 233),
-			Parent:  core.BuildHandle(1, 23),
+			Handle:  core.BuildHandle(0x1, 0x233),
+			Parent:  core.BuildHandle(0x1, 0x23),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -371,8 +371,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(1, 3),
-			Parent:  core.BuildHandle(1, 1),
+			Handle:  core.BuildHandle(0x1, 0x3),
+			Parent:  core.BuildHandle(0x1, 0x1),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -391,7 +391,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -409,7 +409,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -427,7 +427,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -445,7 +445,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -463,7 +463,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -481,7 +481,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -499,21 +499,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
-		},
-		Attribute: tc.Attribute{
-			Kind: "fw",
-			Fw: &tc.Fw{
-				ClassID: &reservedHandle,
-				InDev:   &conf.Interface,
-			},
-		},
-	}
-	template.Filters["arp"] = tc.Object{
-		Msg: tc.Msg{
-			Family:  unix.AF_UNSPEC,
-			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(1, 0),
+			Parent:  core.BuildHandle(0x1, 0x0),
 		},
 		Attribute: tc.Attribute{
 			Kind: "fw",
@@ -524,9 +510,30 @@ func main() {
 		},
 	}
 
+	// need to figure the inital filter for interface traffic and routing
+	// template.Filters["arp"] = tc.Object{
+	// 	Msg: tc.Msg{
+	// 		Family:  unix.AF_UNSPEC,
+	// 		Ifindex: uint32(interf.Index),
+	// 		Parent:  core.BuildHandle(1, 0),
+	// 	},
+	// 	Attribute: tc.Attribute{
+	// 		Kind: "fw",
+	// 		Fw: &tc.Fw{
+	// 			ClassID: &reservedHandle,
+	// 			InDev:   &conf.Interface,
+	// 		},
+	// 	},
+	// }
+
+	// render the config to the JSON file
 	b, err := json.Marshal(template)
 	if err != nil {
 		ln.FatalErr(ctx, err)
 	}
-	os.Stdout.Write(b)
+
+	err = ioutil.WriteFile("./highway.json", b, 0644)
+	if err != nil {
+		ln.FatalErr(ctx, err)
+	}
 }

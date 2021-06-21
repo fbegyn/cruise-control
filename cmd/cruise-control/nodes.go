@@ -9,7 +9,6 @@ import (
 
 // Node holds a node of the TC tree style structure.
 type Node struct {
-	Name     string
 	Type     string
 	Parent   string
 	Object   tc.Object
@@ -18,9 +17,8 @@ type Node struct {
 
 // NewNode creates a new node with the TC object embedded and sets the type of the node
 // types: qdisc, class and filter
-func NewNode(n, typ string) *Node {
+func NewNode(typ string) *Node {
 	return &Node{
-		Name:     n,
 		Type:     typ,
 		Children: []*Node{},
 	}
@@ -28,9 +26,8 @@ func NewNode(n, typ string) *Node {
 
 // NewNodeWithObject creates a new node with the TC object embedded and sets the type of the node
 // types: qdisc, class and filter
-func NewNodeWithObject(n, typ string, object tc.Object) *Node {
+func NewNodeWithObject(typ string, object tc.Object) *Node {
 	return &Node{
-		Name:     n,
 		Type:     typ,
 		Object:   object,
 		Children: []*Node{},
@@ -49,7 +46,7 @@ func (tr *Node) addToParent(n *Node) {
 
 // deleteChild delete child at indx from node
 func (tr *Node) deleteChild(index int) error {
-	if len(tr.Children) - index < 0 {
+	if len(tr.Children)-index < 0 {
 		return fmt.Errorf("index %d out of bounds", index)
 	}
 	tr.Children = append(tr.Children[:index], tr.Children[index+1:]...)
@@ -68,8 +65,8 @@ func (tr Node) isChildOf(n Node) bool {
 
 // equalMsg checks if the metadata of 2 nodes are the same
 func (tr Node) equalMsg(n Node) bool {
-	equalHandle := (tr.Object.Msg.Handle == n.Object.Msg.Handle) 
-	equalInterface := (tr.Object.Msg.Ifindex == n.Object.Msg.Ifindex) 
+	equalHandle := (tr.Object.Msg.Handle == n.Object.Msg.Handle)
+	equalInterface := (tr.Object.Msg.Ifindex == n.Object.Msg.Ifindex)
 	equalParent := (tr.Object.Msg.Parent == n.Object.Msg.Parent)
 	return equalHandle && equalInterface && equalParent
 }
@@ -87,8 +84,10 @@ func CompareSC(a, b tc.ServiceCurve) bool {
 
 func (tr Node) equalProperties(n Node) bool {
 	switch tr.Object.Attribute.Kind {
-	case "hfsc":	
-		if tr.Object.Hfsc == nil && n.Object.Hfsc == nil { break }
+	case "hfsc":
+		if tr.Object.Hfsc == nil && n.Object.Hfsc == nil {
+			break
+		}
 		trHfsc := tr.Object.Hfsc
 		nHfsc := n.Object.Hfsc
 		m := make(map[string]bool)
@@ -143,7 +142,7 @@ func (tr *Node) equalChildren(n *Node) bool {
 func (tr *Node) AddChildren(nodes []*Node) {
 	for _, v := range nodes {
 		if tr.isChild(*v) {
-		    tr.addChild(v)
+			tr.addChild(v)
 		}
 	}
 }
@@ -184,7 +183,6 @@ func (tr *Node) ComposeChildren(nodes []*Node) (leftover []*Node) {
 // ApplyNode applies the tc object contained in the node with the replace function. If the object
 // does not exists, creates it
 func (tr *Node) ApplyNode(tcnl *tc.Tc) {
-	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "applying TC object")
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Replace(&tr.Object); err != nil {
@@ -214,7 +212,6 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) {
 	for _, v := range tr.Children {
 		v.DeleteNode(tcnl)
 	}
-	logger.Log("level", "INFO", "handle", tr.Object.Handle, "type", tr.Type, "msg", "deleting TC object")
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Delete(&tr.Object); err != nil {
@@ -251,4 +248,3 @@ func FindRootNode(nodes []*Node) (n *Node, index int) {
 	}
 	return nil, 0
 }
-

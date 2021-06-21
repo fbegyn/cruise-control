@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"net"
-	"os"
 
 	"github.com/florianl/go-tc"
-	"github.com/go-kit/kit/log"
 	"github.com/spf13/viper"
+	"within.website/ln"
+	"within.website/ln/opname"
 )
 
 //go:generate go run ../gen/main.go ../gen/helpers.go
@@ -19,9 +19,7 @@ type Config struct {
 	DownloadSpeed float64
 	UploadSpeed   float64
 
-	Qdiscs  map[string]QdiscConfig
-	Classes map[string]ClassConfig
-	Filters map[string]FilterConfig
+	TrafficFile string
 }
 
 // QdiscConfig represents the Qdisc config
@@ -48,18 +46,19 @@ type FilterConfig struct {
 	Specs    map[string]interface{}
 }
 
-var logger log.Logger
-
 func main() {
-	logger = log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	logger = log.With(logger, "ts", log.DefaultTimestampUTC, "caller", log.DefaultCaller)
+	// create a context in which the website can run and add logging
+	ctx := opname.With(context.Background(), "main")
+
+	// Enable logging and serve the website
+	ln.Log(ctx, ln.Action("initializing cruise control"))
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath("./")
 
 	if err := viper.ReadInConfig(); err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to read config file", "error", err)
+		ln.FatalErr(ctx, err)
 	}
 
 	conf := Config{}
@@ -68,54 +67,40 @@ func main() {
 	// determine the interface for cruise control to run on
 	interf, err := net.InterfaceByName(conf.Interface)
 	if err != nil {
-		logger.Log("level", "ERROR", "msg", "failed to get interface from name")
+		ln.FatalErr(ctx, err)
 	}
+	_ = interf
 
-	// compose a map of all handles (also classIDs) to easily lookup the qdisc or
-	// class when needed
-	handleMap, err := parseHandles(conf)
+	ln.Log(ctx, ln.Action("determining cruise speed"))
+	tcConf, err := parseTrafficFile(conf.TrafficFile)
 	if err != nil {
-		logger.Log("error", err)
-		os.Exit(8)
-	}
-	// compose a map of all parent of the object to easily look them up later
-	parentMap, err := parseParents(handleMap, conf)
-	if err != nil {
-		logger.Log("error", err)
-		os.Exit(9)
+		ln.FatalErr(ctx, err)
 	}
 
-	actionMap := map[string][]*tc.Action{}
-
-	// compose TC objects into maps of each type. we could also create a single
-	// map of tc.Objects but that what probably include som wizardly or adding a
-	// field to the objects configs to determine the type.
-	qdMap, _ := composeQdiscs(handleMap, parentMap, conf.Qdiscs, interf)
-	clMap, _ := composeClasses(handleMap, parentMap, conf.Classes, interf)
-	flMap, _ := composeFilters(handleMap, parentMap, actionMap, conf.Filters, interf)
-
-	// construct tc qdiscs and classes into an array
+	// construct the TC nodes from the config file
 	var nodes []*Node
-	for k, v := range qdMap {
-		n := NewNodeWithObject(k, "qdisc", *v)
+	// first the classes
+	for _, class := range tcConf.Classes {
+		n := NewNodeWithObject("class", class)
 		nodes = append(nodes, n)
 	}
-	for k, v := range clMap {
-		n := NewNodeWithObject(k, "class", *v)
+	// then the qdiscs
+	for _, qdisc := range tcConf.Qdiscs {
+		n := NewNodeWithObject("qdisc", qdisc)
 		nodes = append(nodes, n)
 	}
-	// construct the tc filters into a seperate tree
+
+	// we load the filters as a seperate TC node "pool"
 	var filters []*Node
-	for k, v := range flMap {
-		n := NewNodeWithObject(k, "filter", *v)
+	for _, filter := range tcConf.Filters {
+		n := NewNodeWithObject("filter", filter)
 		filters = append(filters, n)
 	}
 
 	// construct the TC tree
 	tree, index := FindRootNode(nodes)
 	if tree == nil {
-		logger.Log("level", "ERROR", "err", "no root node found")
-		os.Exit(10)
+		ln.FatalErr(ctx, err)
 	}
 	nodes = append(nodes[:index], nodes[index+1:]...)
 	leftover := tree.ComposeChildren(nodes)
@@ -123,41 +108,42 @@ func main() {
 
 	rtnl, err := tc.Open(&tc.Config{})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not open rtnetlink socket: %v\n", err)
+		ln.FatalErr(ctx, err)
 		return
 	}
 	defer func() {
 		if err := rtnl.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "could not close rtnetlink socket: %v\n", err)
+			ln.FatalErr(ctx, err)
 		}
 	}()
 
 	if len(nodes) == 0 {
-		logger.Log("level", "INFO", "msg", "all nodes parsed, no nodes left over", "tree", "config")
+		ln.Log(ctx, ln.Info("all TC nodes parsed, no TC nodes left over"))
 	} else {
-		logger.Log("level", "INFO", "msg", "some nodes left over", "tree", "config")
+		ln.Log(ctx, ln.Info("there are leftover TC nodes: %d nodes left", len(nodes)))
 	}
 
-	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index), handleMap)
+	ln.Log(ctx, ln.Action("Fetching current TC state"))
+	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	ln.Log(ctx, ln.Action("Applying qdiscs and classes"))
 	if len(systemNodes) > 0 {
 		systemTree, index := FindRootNode(systemNodes)
 		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
 		systemTree.ComposeChildren(systemNodes)
 		if !systemTree.CompareTree(*tree) {
-			logger.Log("level", "INFO", "msg", "updating config")
+			ln.Log(ctx, ln.Info("updating the current interfaces TC config, please wait ..."))
 			systemTree.DeleteNode(rtnl)
 			tree.ApplyNode(rtnl)
 		} else {
-			logger.Log("level", "INFO", "msg", "system already up to date")
+			ln.Log(ctx, ln.Info("current TC config is already up to date"))
 		}
 	} else {
-		logger.Log("level", "INFO", "msg", "no config found, applying config file")
+		ln.Log(ctx, ln.Info("current interface does not have TC data, applying config ..."))
 		tree.ApplyNode(rtnl)
 	}
 
-	logger.Log("level", "INFO", "msg", "applying filters")
+	ln.Log(ctx, ln.Action("Applying filters"))
 	for _, filt := range filters {
-		logger.Log("level", "INFO", "msg", "applying filter", "filterID", filt.Object.Msg.Handle, "parent", filt.Object.Msg.Parent)
 		filt.ApplyNode(rtnl)
 	}
 }
