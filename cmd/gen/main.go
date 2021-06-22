@@ -50,7 +50,8 @@ func main() {
 	conf := Config{}
 	viper.Unmarshal(&conf)
 
-	interfacespeed := 1e9
+	interfacespeed := 1e9 / 8
+	conf.DownloadSpeed = conf.DownloadSpeed / 8
 	internetspeed := math.Ceil(conf.DownloadSpeed * 0.95)
 	reservedspeed := math.Ceil(interfacespeed * 0.2)
 
@@ -219,7 +220,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x21),
+			Handle:  core.BuildHandle(0x1, 0x11),
 			Parent:  core.BuildHandle(0x1, 0x2),
 		},
 		Attribute: tc.Attribute{
@@ -238,7 +239,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x22),
+			Handle:  core.BuildHandle(0x1, 0x12),
 			Parent:  core.BuildHandle(0x1, 0x2),
 		},
 		Attribute: tc.Attribute{
@@ -257,7 +258,7 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x23),
+			Handle:  core.BuildHandle(0x1, 0x13),
 			Parent:  core.BuildHandle(0x1, 0x2),
 		},
 		Attribute: tc.Attribute{
@@ -276,8 +277,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x231),
-			Parent:  core.BuildHandle(0x1, 0x23),
+			Handle:  core.BuildHandle(0x1, 0x21),
+			Parent:  core.BuildHandle(0x1, 0x13),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -295,8 +296,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x2311),
-			Parent:  core.BuildHandle(0x1, 0x231),
+			Handle:  core.BuildHandle(0x1, 0x31),
+			Parent:  core.BuildHandle(0x1, 0x21),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -314,8 +315,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x2312),
-			Parent:  core.BuildHandle(0x1, 0x231),
+			Handle:  core.BuildHandle(0x1, 0x32),
+			Parent:  core.BuildHandle(0x1, 0x21),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -333,8 +334,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x232),
-			Parent:  core.BuildHandle(0x1, 0x23),
+			Handle:  core.BuildHandle(0x1, 0x23),
+			Parent:  core.BuildHandle(0x1, 0x13),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
@@ -352,8 +353,8 @@ func main() {
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x233),
-			Parent:  core.BuildHandle(0x1, 0x23),
+			Handle:  core.BuildHandle(0x1, 0x23),
+			Parent:  core.BuildHandle(0x1, 0x13),
 		},
 		Attribute: tc.Attribute{
 			Kind: "hfsc",

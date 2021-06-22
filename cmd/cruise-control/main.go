@@ -77,6 +77,12 @@ func main() {
 		ln.FatalErr(ctx, err)
 	}
 
+	// update the config to match the interface we're editiong
+	// if the config is rendered somewhere else, this is needed
+	// to ensure that we don't modify the wrong interface if the
+	// index exists
+	tcConf.updateInterface(*interf)
+
 	// construct the TC nodes from the config file
 	var nodes []*Node
 	// first the classes

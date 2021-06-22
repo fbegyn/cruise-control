@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net"
 
 	"github.com/florianl/go-tc"
 )
@@ -22,6 +23,20 @@ func parseTrafficFile(file string) (TcConfig, error) {
 	}
 	json.Unmarshal(dat, &inp)
 	return inp, nil
+}
+
+// update the config struct with the intended interface
+func (tc *TcConfig) updateInterface(interf net.Interface) error {
+	for _, qd := range tc.Qdiscs {
+		qd.Msg.Ifindex = uint32(interf.Index)
+	}
+	for _, cl := range tc.Qdiscs {
+		cl.Msg.Ifindex = uint32(interf.Index)
+	}
+	for _, fl := range tc.Qdiscs {
+		fl.Msg.Ifindex = uint32(interf.Index)
+	}
+	return nil
 }
 
 // Generate a traffic file from the current TcConfig
