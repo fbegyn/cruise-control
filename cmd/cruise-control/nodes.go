@@ -65,8 +65,8 @@ func (tr Node) isChildOf(n Node) bool {
 
 // equalMsg checks if the metadata of 2 nodes are the same
 func (tr Node) equalMsg(n Node) bool {
-	equalHandle := (tr.Object.Msg.Handle == n.Object.Msg.Handle)
 	equalInterface := (tr.Object.Msg.Ifindex == n.Object.Msg.Ifindex)
+	equalHandle := (tr.Object.Msg.Handle == n.Object.Msg.Handle)
 	equalParent := (tr.Object.Msg.Parent == n.Object.Msg.Parent)
 	return equalHandle && equalInterface && equalParent
 }

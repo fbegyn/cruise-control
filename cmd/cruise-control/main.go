@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/florianl/go-tc"
+	"github.com/mdlayher/netlink"
 	"github.com/spf13/viper"
 	"within.website/ln"
 	"within.website/ln/opname"
@@ -113,6 +114,11 @@ func main() {
 	nodes = leftover
 
 	rtnl, err := tc.Open(&tc.Config{})
+	if err != nil {
+		ln.FatalErr(ctx, err)
+		return
+	}
+	err = rtnl.SetOption(netlink.ExtendedAcknowledge, true)
 	if err != nil {
 		ln.FatalErr(ctx, err)
 		return
