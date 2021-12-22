@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net"
 
 	"github.com/florianl/go-tc"
@@ -156,6 +157,7 @@ func main() {
 
 	ln.Log(ctx, ln.Action("Applying filters"))
 	for _, filt := range filters {
+		fmt.Println(filt)
 		filt.ApplyNode(rtnl)
 	}
 }
