@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/florianl/go-tc"
 )
@@ -182,53 +181,65 @@ func (tr *Node) ComposeChildren(nodes []*Node) (leftover []*Node) {
 
 // ApplyNode applies the tc object contained in the node with the replace function. If the object
 // does not exists, creates it
-func (tr *Node) ApplyNode(tcnl *tc.Tc) {
+func (tr *Node) ApplyNode(tcnl *tc.Tc) error {
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Replace(&tr.Object); err != nil {
-			fmt.Fprintf(os.Stderr, "could not assign qdisc to %d: %v\n", tr.Object.Ifindex, err)
-			return
+			return fmt.Errorf("could not assign qdisc to %d: %v\n", tr.Object.Ifindex, err)
 		}
 	case "class":
 		if err := tcnl.Class().Replace(&tr.Object); err != nil {
-			fmt.Fprintf(os.Stderr, "could not assign class to %d: %v\n", tr.Object.Ifindex, err)
-			return
+			return fmt.Errorf("could not assign class to %d: %v\n", tr.Object.Ifindex, err)
 		}
 	case "filter":
 		if err := tcnl.Filter().Replace(&tr.Object); err != nil {
-			fmt.Fprintf(os.Stderr, "could not assign filter to %d: %v\n", tr.Object.Ifindex, err)
-			return
+			return fmt.Errorf("could not assign filter to %d: %v\n", tr.Object.Ifindex, err)
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "Unkown TC object type\n")
+		return fmt.Errorf("Unkown TC object type\n")
 	}
 	for _, v := range tr.Children {
-		v.ApplyNode(tcnl)
+		if err := v.ApplyNode(tcnl); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // DeleteNode deletes the parent node (and as a consequence all children nodes will also be deleted)
-func (tr *Node) DeleteNode(tcnl *tc.Tc) {
+func (tr *Node) DeleteNode(tcnl *tc.Tc) error {
 	for _, v := range tr.Children {
 		v.DeleteNode(tcnl)
 	}
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Delete(&tr.Object); err != nil {
-			fmt.Fprintf(os.Stderr, "could not delete qdisc from %d: %v\n", tr.Object.Ifindex, err)
-			return
+			return fmt.Errorf("could not delete qdisc from %d: %v\n", tr.Object.Ifindex, err)
 		}
 	case "class":
+		// if we first fail to remove the class from the system, try to clean up any attached qdiscs first.
+		// if that fails, we return the error
 		if err := tcnl.Class().Delete(&tr.Object); err != nil {
-			fmt.Fprintf(os.Stderr, "could not delete class from %d: %v\n", tr.Object.Ifindex, err)
-			return
+			qdiscTry := tc.Object{
+				Msg: tc.Msg{
+					Family:  tr.Object.Family,
+					Ifindex: tr.Object.Ifindex,
+					Parent:  tr.Object.Handle,
+				},
+			}
+			tcnl.Qdisc().Delete(&qdiscTry)
+		}
+		if err := tcnl.Class().Delete(&tr.Object); err != nil {
+			return fmt.Errorf("could not delete class from %d: %v\n", tr.Object.Ifindex, err)
 		}
 	case "filter":
 		if err := tcnl.Filter().Delete(&tr.Object); err != nil {
-			fmt.Fprintf(os.Stderr, "could not delete filter from %d: %v\n", tr.Object.Ifindex, err)
-			return
+			return fmt.Errorf("could not delete filter from %d: %v\n", tr.Object.Ifindex, err)
 		}
+	default:
+		return fmt.Errorf("Unkown TC object type\n")
 	}
+	return nil
 }
 
 // FindPeer finds the child of another node that matches the current selected node. Can be used to

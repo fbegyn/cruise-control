@@ -40,9 +40,9 @@ func (tc *TcConfig) updateInterface(interf net.Interface) error {
 }
 
 // Generate a traffic file from the current TcConfig
-func generateTrafficFile(conf TcConfig, file string) error {
+func (tc *TcConfig) generateTrafficFile(file string) error {
 	// render the config to the JSON file
-	rawConf, err := json.Marshal(conf)
+	rawConf, err := json.Marshal(tc)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/florianl/go-tc"
@@ -74,16 +73,7 @@ func main() {
 	_ = interf
 
 	ln.Log(ctx, ln.Action("determining cruise speed"))
-	tcConf, err := parseTrafficFile(conf.TrafficFile)
-	if err != nil {
-		ln.FatalErr(ctx, err)
-	}
-
-	// update the config to match the interface we're editiong
-	// if the config is rendered somewhere else, this is needed
-	// to ensure that we don't modify the wrong interface if the
-	// index exists
-	tcConf.updateInterface(*interf)
+	tcConf := createQoSSimple(ctx, *interf, 1e9/8, int(conf.DownloadSpeed)/8)
 
 	// construct the TC nodes from the config file
 	var nodes []*Node
@@ -145,7 +135,6 @@ func main() {
 		systemTree.ComposeChildren(systemNodes)
 		if !systemTree.CompareTree(*tree) {
 			ln.Log(ctx, ln.Info("updating the current interfaces TC config, please wait ..."))
-			systemTree.DeleteNode(rtnl)
 			tree.ApplyNode(rtnl)
 		} else {
 			ln.Log(ctx, ln.Info("current TC config is already up to date"))
@@ -157,7 +146,6 @@ func main() {
 
 	ln.Log(ctx, ln.Action("Applying filters"))
 	for _, filt := range filters {
-		fmt.Println(filt)
 		filt.ApplyNode(rtnl)
 	}
 }
