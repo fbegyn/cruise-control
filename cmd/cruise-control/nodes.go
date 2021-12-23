@@ -82,39 +82,50 @@ func CompareSC(a, b tc.ServiceCurve) bool {
 }
 
 func (tr Node) equalProperties(n Node) bool {
-	switch tr.Object.Attribute.Kind {
+	switch tr.Object.Kind {
 	case "hfsc":
-		if tr.Object.Hfsc == nil && n.Object.Hfsc == nil {
-			break
-		}
-		trHfsc := tr.Object.Hfsc
-		nHfsc := n.Object.Hfsc
-		m := make(map[string]bool)
-		if trHfsc.Rsc != nil && nHfsc.Rsc != nil {
-			m["rsc"] = CompareSC(*trHfsc.Rsc, *nHfsc.Rsc)
-		}
-		if trHfsc.Usc != nil && nHfsc.Usc != nil {
-			m["usc"] = CompareSC(*trHfsc.Usc, *nHfsc.Usc)
-		}
-		if trHfsc.Fsc != nil && nHfsc.Fsc != nil {
-			m["fsc"] = CompareSC(*trHfsc.Fsc, *nHfsc.Fsc)
-		}
-
-		for _, v := range m {
-			if !v {
+		switch {
+		case tr.Object.Hfsc != nil:
+			if n.Object.Hfsc == nil {
 				return false
 			}
+			trHfsc, nHfsc := tr.Object.Hfsc, n.Object.Hfsc
+			if trHfsc.Rsc != nil && nHfsc.Rsc != nil {
+				if !CompareSC(*trHfsc.Rsc, *nHfsc.Rsc) {
+					return false
+				}
+			}
+			if trHfsc.Usc != nil && nHfsc.Usc != nil {
+				if !CompareSC(*trHfsc.Usc, *nHfsc.Usc) {
+					return false
+				}
+			}
+			if trHfsc.Fsc != nil && nHfsc.Fsc != nil {
+				if !CompareSC(*trHfsc.Fsc, *nHfsc.Fsc) {
+					return false
+				}
+			}
+			return true
+		case tr.Object.HfscQOpt != nil:
+			if n.Object.HfscQOpt == nil {
+				return false
+			}
+			if tr.Object.HfscQOpt.DefCls != n.Object.HfscQOpt.DefCls {
+				return false
+			}
+			return true
 		}
-		return true
 	}
-	return true
+	return false
 }
 
 // equalNode checks if the header and object of the nodes are the same
 // it ignores the children, these should be check sperately with the
 // equalChildren function
 func (tr Node) equalNode(n Node) bool {
-	tr.equalProperties(n)
+	fmt.Println(tr)
+	fmt.Println(n)
+	fmt.Println(tr.equalProperties(n))
 	return (tr.equalMsg(n) && tr.equalKind(n) && tr.equalProperties(n))
 }
 
