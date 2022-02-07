@@ -225,7 +225,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -239,13 +239,16 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 			},
 		},
 	}
+
+	// this is created by a req.t.tcm_info = TC_H_MAKE(prio<<16, protocol);
+	// #define TC_H_MAKE(maj,min) (((maj)&TC_H_MAJ_MASK)|((min)&TC_H_MIN_MASK))
 	normalHandle := template.Classes["normal"].Msg.Handle
 	template.Filters["normal"] = tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -266,7 +269,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -288,7 +291,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
 			Handle:  13,
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "fw",
@@ -643,7 +646,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -663,7 +666,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -683,7 +686,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -703,7 +706,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -723,7 +726,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -743,7 +746,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -765,7 +768,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
 			Handle:  13,
-			Info:    768,
+			Info:    core.BuildHandle(0, 768),
 		},
 		Attribute: tc.Attribute{
 			Kind: "fw",
