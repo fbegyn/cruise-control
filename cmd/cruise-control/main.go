@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
+	"strconv"
 
 	"github.com/florianl/go-tc"
 	"github.com/mdlayher/netlink"
@@ -17,6 +19,7 @@ import (
 // Config represents the config in struct shape
 type Config struct {
 	Interface string
+	Port      int
 
 	DownloadSpeed float64
 	UploadSpeed   float64
@@ -49,7 +52,6 @@ type FilterConfig struct {
 }
 
 func main() {
-	lanParty := flag.Bool("lan-party", false, "render LAN party QoS structure, instead of the simple one")
 	flag.Parse()
 
 	ctx := opname.With(context.Background(), "main")
@@ -62,18 +64,23 @@ func main() {
 	}
 	conf := Config{}
 	viper.Unmarshal(&conf)
-	interf, err := net.InterfaceByName(conf.Interface)
+
+	http.HandleFunc("/tc/apply", TCApplyHandler)
+	ln.Log(ctx, ln.Info("starting API on 0.0.0.0:%d", conf.Port))
+	ln.FatalErr(ctx, http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
+}
+
+func TCApplyHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := opname.With(context.Background(), "TCApplyHandler")
+	devName := r.URL.Query().Get("interface")
+	speed, err := strconv.Atoi(r.URL.Query().Get("up"))
 	if err != nil {
 		ln.FatalErr(ctx, err)
 	}
+	ln.Log(ctx, ln.Info("interface: %s - speed: %d Mbps", devName, speed))
 
-	ln.Log(ctx, ln.Action("creating QoS structure"))
-	var tcConf TcConfig
-	if *lanParty {
-		tcConf = createQoSLanparty(ctx, *interf, 1e9/8, int(conf.DownloadSpeed)/8)
-	} else {
-		tcConf = createQoSSimple(ctx, *interf, 1e9/8, int(conf.DownloadSpeed)/8)
-	}
+	interf, err := net.InterfaceByName(devName)
+	tcConf := createQoSSimple(ctx, *interf, 1e9, speed)
 
 	// construct the TC nodes from the config file
 	var nodes []*Node
@@ -153,4 +160,5 @@ func main() {
 		}
 		filt.ApplyNode(rtnl)
 	}
+
 }

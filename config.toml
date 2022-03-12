@@ -1,3 +1,4 @@
 interface = "test-01"
 downloadSpeed = 500e6
 uploadSpeed = 100e6
+port = 8080
