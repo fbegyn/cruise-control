@@ -13,12 +13,9 @@ import (
 )
 
 func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, internetSpeed int) TcConfig {
-	// Enable logging and serve the website
 	ln.Log(ctx, ln.Action("qos_setup"))
 
 	internetspeed := math.Ceil(float64(internetSpeed) * 0.95)
-	reservedspeed := math.Ceil(float64(interfaceSpeed) * 0.2)
-
 	priospeed := math.Ceil(internetspeed * 0.4)
 	normalspeed := math.Ceil(internetspeed * 0.4)
 	lowspeed := math.Ceil(internetspeed * 0.2)
@@ -34,7 +31,6 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 	limit := uint32(1200)
 	flows := uint32(65535)
 	target := uint32(5000)
-
 	defaultFqCodel := tc.Attribute{
 		Kind: "fq_codel",
 		FqCodel: &tc.FqCodel{
@@ -55,7 +51,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 		Attribute: tc.Attribute{
 			Kind: "hfsc",
 			HfscQOpt: &tc.HfscQOpt{
-				DefCls: 3,
+				DefCls: 2,
 			},
 			Stab: &tc.Stab{
 				Base: &tc.SizeSpec{
@@ -92,17 +88,8 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 		},
 		Attribute: defaultFqCodel,
 	}
-	template.Qdiscs["routing"] = tc.Object{
-		Msg: tc.Msg{
-			Family:  unix.AF_UNSPEC,
-			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x3, 0x0),
-			Parent:  core.BuildHandle(0x1, 0x3),
-		},
-		Attribute: defaultFqCodel,
-	}
 
-	// classs setup
+	// limit the interface to the speed determined by interfaceSpeed
 	interfaceClass := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
@@ -123,6 +110,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 	SetUL(interfaceClass.Attribute.Hfsc, uint32(interfaceSpeed), 0, 0)
 	template.Classes["interface"] = interfaceClass
 
+	// set an upper limit that is determined by the ISP link
 	internetClass := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
@@ -143,6 +131,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 	SetUL(interfaceClass.Attribute.Hfsc, uint32(internetSpeed), 0, 0)
 	template.Classes["internet"] = internetClass
 
+	// give the high prio traffic low latency and high bandwidth assurance
 	prioClass := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
@@ -162,6 +151,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 	SetSC(prioClass.Attribute.Hfsc, uint32(priospeed), 0, 0)
 	template.Classes["prio"] = prioClass
 
+	// normal traffic will still be able to talk, with less latency assurance
 	normalClass := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
@@ -181,6 +171,7 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 	SetSC(normalClass.Attribute.Hfsc, uint32(normalspeed), 60000, 0)
 	template.Classes["normal"] = normalClass
 
+	// low prio traffic has lower bandwidth and even less latency assurances
 	lowClass := tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
@@ -200,32 +191,15 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 	SetSC(lowClass.Attribute.Hfsc, uint32(lowspeed), 120000, 0)
 	template.Classes["low"] = lowClass
 
-	reservedClass := tc.Object{
-		Msg: tc.Msg{
-			Family:  unix.AF_UNSPEC,
-			Ifindex: uint32(interf.Index),
-			Handle:  core.BuildHandle(0x1, 0x3),
-			Parent:  core.BuildHandle(0x1, 0x1),
-		},
-		Attribute: tc.Attribute{
-			Kind: "hfsc",
-			Hfsc: &tc.Hfsc{
-				Rsc: &tc.ServiceCurve{},
-				Usc: &tc.ServiceCurve{},
-				Fsc: &tc.ServiceCurve{},
-			},
-		},
-	}
-	SetLS(reservedClass.Attribute.Hfsc, uint32(reservedspeed), 0, 0)
-	template.Classes["reserved"] = reservedClass
-
+	// set the filter for high prio traffic
 	prioHandle := template.Classes["prio"].Msg.Handle
 	template.Filters["prio"] = tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Handle:  1,
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -240,15 +214,15 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 		},
 	}
 
-	// this is created by a req.t.tcm_info = TC_H_MAKE(prio<<16, protocol);
-	// #define TC_H_MAKE(maj,min) (((maj)&TC_H_MAJ_MASK)|((min)&TC_H_MIN_MASK))
+	// set the filter for normal traffic
 	normalHandle := template.Classes["normal"].Msg.Handle
 	template.Filters["normal"] = tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Handle:  2,
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -263,13 +237,15 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 		},
 	}
 
+	// set the filter for low prio traffic flows
 	lowHandle := template.Classes["low"].Msg.Handle
 	template.Filters["low"] = tc.Object{
 		Msg: tc.Msg{
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Handle:  3,
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -283,26 +259,6 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 			},
 		},
 	}
-	reservedHandle := template.Classes["reserved"].Msg.Handle
-	mask := uint32(0xFFFF)
-	template.Filters["reserved"] = tc.Object{
-		Msg: tc.Msg{
-			Family:  unix.AF_UNSPEC,
-			Ifindex: uint32(interf.Index),
-			Parent:  core.BuildHandle(0x1, 0x0),
-			Handle:  13,
-			Info:    core.BuildHandle(0, 768),
-		},
-		Attribute: tc.Attribute{
-			Kind: "fw",
-			Fw: &tc.Fw{
-				ClassID: &reservedHandle,
-				InDev:   &interf.Name,
-				Mask:    &mask,
-			},
-		},
-	}
-
 	return template
 }
 
@@ -646,7 +602,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -666,7 +622,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -686,7 +642,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -706,7 +662,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -726,7 +682,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -746,7 +702,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Family:  unix.AF_UNSPEC,
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "u32",
@@ -768,7 +724,7 @@ func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed
 			Ifindex: uint32(interf.Index),
 			Parent:  core.BuildHandle(0x1, 0x0),
 			Handle:  13,
-			Info:    core.BuildHandle(0, 768),
+			Info:    core.BuildHandle(0, 0x0300),
 		},
 		Attribute: tc.Attribute{
 			Kind: "fw",

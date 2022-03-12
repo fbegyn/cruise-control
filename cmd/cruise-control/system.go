@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
+func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr, filterNodes []*Node) {
 	qdiscs, err := tcnl.Qdisc().Get()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get qdiscs")
@@ -20,18 +20,15 @@ func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get classes")
 	}
-	//filters, err := tcnl.Class().Get(&tc.Msg{
-	//	Family:  unix.AF_UNSPEC,
-	//	Ifindex: interf,
-	//})
+	filters, err := tcnl.Class().Get(&tc.Msg{
+		Family:  unix.AF_UNSPEC,
+		Ifindex: interf,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get filters")
 	}
 
 	for _, qd := range qdiscs {
-		if qd.Ifindex != interf {
-			continue
-		}
 		n := NewNodeWithObject("qdisc", qd)
 		tr = append(tr, n)
 	}
@@ -39,10 +36,10 @@ func GetInterfaceNodes(tcnl *tc.Tc, interf uint32) (tr []*Node) {
 		n := NewNodeWithObject("class", cl)
 		tr = append(tr, n)
 	}
-	//for _, fl := range filters {
-	//	flHandle := fmt.Sprintf("%d", fl.Handle)
-	//	n := NewNodeWithObject(flHandle, "filter", fl)
-	//	tr = append(tr, n)
-	//}
+
+	for _, fl := range filters {
+		n := NewNodeWithObject("filter", fl)
+		filterNodes = append(filterNodes, n)
+	}
 	return
 }

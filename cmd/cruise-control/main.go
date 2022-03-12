@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"net"
 
 	"github.com/florianl/go-tc"
@@ -12,7 +14,6 @@ import (
 )
 
 //go:generate go run ../gen/main.go ../gen/helpers.go
-
 // Config represents the config in struct shape
 type Config struct {
 	Interface string
@@ -48,47 +49,43 @@ type FilterConfig struct {
 }
 
 func main() {
-	// create a context in which the website can run and add logging
+	lanParty := flag.Bool("lan-party", false, "render LAN party QoS structure, instead of the simple one")
+	flag.Parse()
+
 	ctx := opname.With(context.Background(), "main")
-
-	// Enable logging and serve the website
 	ln.Log(ctx, ln.Action("initializing cruise control"))
-
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath("./")
-
 	if err := viper.ReadInConfig(); err != nil {
 		ln.FatalErr(ctx, err)
 	}
-
 	conf := Config{}
 	viper.Unmarshal(&conf)
-
-	// determine the interface for cruise control to run on
 	interf, err := net.InterfaceByName(conf.Interface)
 	if err != nil {
 		ln.FatalErr(ctx, err)
 	}
-	_ = interf
 
-	ln.Log(ctx, ln.Action("determining cruise speed"))
-	tcConf := createQoSSimple(ctx, *interf, 1e9/8, int(conf.DownloadSpeed)/8)
+	ln.Log(ctx, ln.Action("creating QoS structure"))
+	var tcConf TcConfig
+	if *lanParty {
+		tcConf = createQoSLanparty(ctx, *interf, 1e9/8, int(conf.DownloadSpeed)/8)
+	} else {
+		tcConf = createQoSSimple(ctx, *interf, 1e9/8, int(conf.DownloadSpeed)/8)
+	}
 
 	// construct the TC nodes from the config file
 	var nodes []*Node
-	// first the classes
 	for _, class := range tcConf.Classes {
 		n := NewNodeWithObject("class", class)
 		nodes = append(nodes, n)
 	}
-	// then the qdiscs
 	for _, qdisc := range tcConf.Qdiscs {
 		n := NewNodeWithObject("qdisc", qdisc)
 		nodes = append(nodes, n)
 	}
 
-	// we load the filters as a seperate TC node "pool"
 	var filters []*Node
 	for _, filter := range tcConf.Filters {
 		n := NewNodeWithObject("filter", filter)
@@ -101,9 +98,14 @@ func main() {
 		ln.FatalErr(ctx, err)
 	}
 	nodes = append(nodes[:index], nodes[index+1:]...)
-	leftover := tree.ComposeChildren(nodes)
-	nodes = leftover
+	nodes = tree.ComposeChildren(nodes)
+	if len(nodes) == 0 {
+		ln.Log(ctx, ln.Info("all TC nodes parsed, tree constructed"))
+	} else {
+		ln.Log(ctx, ln.Info("there are leftover TC nodes: %d nodes left", len(nodes)))
+	}
 
+	// open a go-tc socket
 	rtnl, err := tc.Open(&tc.Config{})
 	if err != nil {
 		ln.FatalErr(ctx, err)
@@ -120,32 +122,35 @@ func main() {
 		}
 	}()
 
-	if len(nodes) == 0 {
-		ln.Log(ctx, ln.Info("all TC nodes parsed, no TC nodes left over"))
+	// get the system tree and compare it to the current config. If there is a difference, we should
+	// reapply the tree so the config is matched
+	ln.Log(ctx, ln.Action("Fetching current TC state"))
+	systemNodes, systemFilters := GetInterfaceNodes(rtnl, uint32(interf.Index))
+	systemTree, index := FindRootNode(systemNodes)
+	systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
+	systemTree.ComposeChildren(systemNodes)
+
+	// check if the system is up to date or not
+	if !systemTree.CompareTree(*tree) {
+		ln.Log(ctx, ln.Info("updating the current interfaces qdiscs and classes"))
+		tree.ApplyNode(rtnl)
 	} else {
-		ln.Log(ctx, ln.Info("there are leftover TC nodes: %d nodes left", len(nodes)))
+		ln.Log(ctx, ln.Info("current interface is already up to date with the qdiscs and classes"))
 	}
 
-	ln.Log(ctx, ln.Action("Fetching current TC state"))
-	systemNodes := GetInterfaceNodes(rtnl, uint32(interf.Index))
-	ln.Log(ctx, ln.Action("Applying qdiscs and classes"))
-	if len(systemNodes) > 0 {
-		systemTree, index := FindRootNode(systemNodes)
-		systemNodes = append(systemNodes[:index], systemNodes[index+1:]...)
-		systemTree.ComposeChildren(systemNodes)
-		if !systemTree.CompareTree(*tree) {
-			ln.Log(ctx, ln.Info("updating the current interfaces TC config, please wait ..."))
-			tree.ApplyNode(rtnl)
-		} else {
-			ln.Log(ctx, ln.Info("current TC config is already up to date"))
+	test := make(map[uint32]struct{})
+	for _, t := range systemFilters {
+		if _, ok := test[t.Object.Handle]; ok {
+			continue
 		}
-	} else {
-		ln.Log(ctx, ln.Info("current interface does not have TC data, applying config ..."))
-		tree.ApplyNode(rtnl)
+		test[t.Object.Handle] = struct{}{}
 	}
 
 	ln.Log(ctx, ln.Action("Applying filters"))
 	for _, filt := range filters {
+		if _, k := test[filt.Object.Handle]; k {
+			fmt.Println("fitler found")
+		}
 		filt.ApplyNode(rtnl)
 	}
 }

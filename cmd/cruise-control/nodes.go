@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/florianl/go-tc"
 )
@@ -83,37 +84,14 @@ func CompareSC(a, b tc.ServiceCurve) bool {
 
 func (tr Node) equalProperties(n Node) bool {
 	switch tr.Object.Kind {
+	case "fq_codel":
+		return reflect.DeepEqual(tr.Object.FqCodel, n.Object.FqCodel)
 	case "hfsc":
 		switch {
 		case tr.Object.Hfsc != nil:
-			if n.Object.Hfsc == nil {
-				return false
-			}
-			trHfsc, nHfsc := tr.Object.Hfsc, n.Object.Hfsc
-			if trHfsc.Rsc != nil && nHfsc.Rsc != nil {
-				if !CompareSC(*trHfsc.Rsc, *nHfsc.Rsc) {
-					return false
-				}
-			}
-			if trHfsc.Usc != nil && nHfsc.Usc != nil {
-				if !CompareSC(*trHfsc.Usc, *nHfsc.Usc) {
-					return false
-				}
-			}
-			if trHfsc.Fsc != nil && nHfsc.Fsc != nil {
-				if !CompareSC(*trHfsc.Fsc, *nHfsc.Fsc) {
-					return false
-				}
-			}
-			return true
+			return reflect.DeepEqual(tr.Object.Hfsc, n.Object.Hfsc)
 		case tr.Object.HfscQOpt != nil:
-			if n.Object.HfscQOpt == nil {
-				return false
-			}
-			if tr.Object.HfscQOpt.DefCls != n.Object.HfscQOpt.DefCls {
-				return false
-			}
-			return true
+			return reflect.DeepEqual(tr.Object.HfscQOpt, n.Object.HfscQOpt)
 		}
 	}
 	return false
@@ -123,29 +101,26 @@ func (tr Node) equalProperties(n Node) bool {
 // it ignores the children, these should be check sperately with the
 // equalChildren function
 func (tr Node) equalNode(n Node) bool {
-	fmt.Println(tr)
-	fmt.Println(n)
-	fmt.Println(tr.equalProperties(n))
 	return (tr.equalMsg(n) && tr.equalKind(n) && tr.equalProperties(n))
 }
 
 // equalChildren check if the children of the nodes are the same
-func (tr *Node) equalChildren(n *Node) bool {
-	equalChildren := true
-	for _, child := range tr.Children {
-		equalChild := false
-		for _, peer := range n.Children {
-			if equalChild = child.equalNode(*peer); equalChild {
-				break
-			}
-		}
-		equalChildren = equalChildren && equalChild
-		if !equalChildren {
-			break
-		}
-	}
-	return equalChildren
-}
+// func (tr *Node) equalChildren(n *Node) bool {
+// 	equalChildren := true
+// 	for _, child := range tr.Children {
+// 		equalChild := false
+// 		for _, peer := range n.Children {
+// 			if equalChild = child.equalNode(*peer); equalChild {
+// 				break
+// 			}
+// 		}
+// 		equalChildren = equalChildren && equalChild
+// 		if !equalChildren {
+// 			break
+// 		}
+// 	}
+// 	return equalChildren
+// }
 
 // AddChildren iterates over a set of nodes and if the node is a child, adds that node to the
 // children of the current node
@@ -196,18 +171,18 @@ func (tr *Node) ApplyNode(tcnl *tc.Tc) error {
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Replace(&tr.Object); err != nil {
-			return fmt.Errorf("could not assign qdisc to %d: %v\n", tr.Object.Ifindex, err)
+			return fmt.Errorf("could not assign qdisc to %d: %v", tr.Object.Ifindex, err)
 		}
 	case "class":
 		if err := tcnl.Class().Replace(&tr.Object); err != nil {
-			return fmt.Errorf("could not assign class to %d: %v\n", tr.Object.Ifindex, err)
+			return fmt.Errorf("could not assign class to %d: %v", tr.Object.Ifindex, err)
 		}
 	case "filter":
 		if err := tcnl.Filter().Replace(&tr.Object); err != nil {
-			return fmt.Errorf("could not assign filter to %d: %v\n", tr.Object.Ifindex, err)
+			return fmt.Errorf("could not assign filter to %d: %v", tr.Object.Ifindex, err)
 		}
 	default:
-		return fmt.Errorf("Unkown TC object type\n")
+		return fmt.Errorf("unkown TC object type")
 	}
 	for _, v := range tr.Children {
 		if err := v.ApplyNode(tcnl); err != nil {
@@ -225,7 +200,7 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) error {
 	switch tr.Type {
 	case "qdisc":
 		if err := tcnl.Qdisc().Delete(&tr.Object); err != nil {
-			return fmt.Errorf("could not delete qdisc from %d: %v\n", tr.Object.Ifindex, err)
+			return fmt.Errorf("could not delete qdisc from %d: %v", tr.Object.Ifindex, err)
 		}
 	case "class":
 		// if we first fail to remove the class from the system, try to clean up any attached qdiscs first.
@@ -241,14 +216,14 @@ func (tr *Node) DeleteNode(tcnl *tc.Tc) error {
 			tcnl.Qdisc().Delete(&qdiscTry)
 		}
 		if err := tcnl.Class().Delete(&tr.Object); err != nil {
-			return fmt.Errorf("could not delete class from %d: %v\n", tr.Object.Ifindex, err)
+			return fmt.Errorf("could not delete class from %d: %v", tr.Object.Ifindex, err)
 		}
 	case "filter":
 		if err := tcnl.Filter().Delete(&tr.Object); err != nil {
-			return fmt.Errorf("could not delete filter from %d: %v\n", tr.Object.Ifindex, err)
+			return fmt.Errorf("could not delete filter from %d: %v", tr.Object.Ifindex, err)
 		}
 	default:
-		return fmt.Errorf("Unkown TC object type\n")
+		return fmt.Errorf("unkown TC object type")
 	}
 	return nil
 }
