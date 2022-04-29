@@ -161,4 +161,7 @@ func TCApplyHandler(w http.ResponseWriter, r *http.Request) {
 		filt.ApplyNode(rtnl)
 	}
 
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/text")
+	w.Write([]byte("Cruise control updated"))
 }
