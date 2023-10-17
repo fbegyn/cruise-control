@@ -1,5 +1,0 @@
-interface = "test-01"
-downloadSpeed = 500e6
-uploadSpeed = 100e6
-
-trafficFile = "./highway.json"

@@ -2,60 +2,42 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/florianl/go-tc"
+	"github.com/florianl/go-tc/core"
 	"github.com/mdlayher/netlink"
 	"github.com/spf13/viper"
+	"golang.org/x/sys/unix"
 	"within.website/ln"
 	"within.website/ln/opname"
 )
 
-//go:generate go run ../gen/main.go ../gen/helpers.go
 // Config represents the config in struct shape
+//
+//go:generate go run ../gen/main.go ../gen/helpers.go
 type Config struct {
-	Interface string
-	Port      int
-
-	DownloadSpeed float64
-	UploadSpeed   float64
-
-	TrafficFile string
+	Addr string
 }
 
-// QdiscConfig represents the Qdisc config
-type QdiscConfig struct {
-	Type   string
-	Handle string
-	Parent string
-	Specs  map[string]uint32
-}
-
-// ClassConfig represents that Class config
-type ClassConfig struct {
-	Type    string
-	ClassID string
-	Parent  string
-	Specs   map[string]interface{}
-}
-
-// FilterConfig represents a TC filter config in struct
-type FilterConfig struct {
-	Type     string
-	FilterID string
-	Parent   string
-	Specs    map[string]interface{}
-}
+var (
+	logger *slog.Logger
+)
 
 func main() {
 	flag.Parse()
 
 	ctx := opname.With(context.Background(), "main")
-	ln.Log(ctx, ln.Action("initializing cruise control"))
+	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger.Info("initializing cruise control")
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath("./")
@@ -65,9 +47,72 @@ func main() {
 	conf := Config{}
 	viper.Unmarshal(&conf)
 
-	http.HandleFunc("/tc/apply", TCApplyHandler)
-	ln.Log(ctx, ln.Info("starting API on 0.0.0.0:%d", conf.Port))
-	ln.FatalErr(ctx, http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
+	mux := http.NewServeMux()
+
+	// http.HandleFunc("/api/tc/apply", TCApplyHandler)
+	// http.HandleFunc("/api/tc/create", TCCreateHandler)
+	mux.HandleFunc("/api/tc/objects", ObjectCreateHandler)
+	// http.HandleFunc("/api/tc/handles/<handle>", HandleGetHandler)
+	// http.HandleFunc("/api/tc/handles/<handle>", HandlePutHandler)
+	logger.Info("starting API server", "addr", conf.Addr)
+	if err := http.ListenAndServe(conf.Addr, mux); err != nil {
+		logger.Error("cannot start API server", "err", err)
+	}
+}
+
+type JSONObject struct {
+	Name      string       `json:"name,omitempty"`
+	Type      string       `json:"type"`
+	Interface string       `json:"interface"`
+	Handle    string       `json:"handle"`
+	Parent    string       `json:"parent,omitempty"`
+	Attr      tc.Attribute `json:"attr"`
+}
+
+func JSONToTC(json JSONObject) (tc.Object, error) {
+	handle, err := StrHandle(json.Handle)
+	if err != nil {
+		logger.Error("failed to parse handle", "handle", json.Handle, "err", err)
+		return tc.Object{}, fmt.Errorf("failed to parse handle")
+	}
+	parent, err := StrHandle(json.Parent)
+	if err != nil {
+		logger.Error("failed to parse parent", "parent", json.Handle, "err", err)
+		return tc.Object{}, fmt.Errorf("failed to parse parent")
+	}
+	interf, err := net.InterfaceByName(json.Interface)
+	if err != nil {
+		logger.Error("failed to lookup interface", "interface", json.Interface, "err", err)
+		return tc.Object{}, fmt.Errorf("failed to lookup interface")
+	}
+	return tc.Object{
+		Msg: tc.Msg{
+			Family:  unix.AF_UNSPEC,
+			Ifindex: uint32(interf.Index),
+			Handle:  handle,
+			Parent:  parent,
+		},
+		Attribute: json.Attr,
+	}, nil
+}
+
+func ObjectCreateHandler(w http.ResponseWriter, r *http.Request) {
+	data := []JSONObject{}
+
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		logger.Error("failed reading body", "err", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+
+	logger.Info("parsed data packet into TC objects")
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("Cruise control updated"))
+
+	fmt.Println(data)
 }
 
 func TCApplyHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,108 @@
+[{
+    "name": "root",
+    "type": "qdisc",
+    "interface": "dummy",
+    "handle": "1:0",
+    "parent": "root",
+    "attr": {
+        "Kind": "hfsc",
+        "HfscQOpt": {
+            "DefCls": 2
+        }
+    }
+},
+{
+    "name": "prio",
+    "type": "class",
+    "interface": "dummy",
+    "handle": "1:21",
+    "parent": "1:0",
+    "attr": {
+        "kind": "hfsc",
+        "hfsc": {
+            "Rsc": { "m1": 100, "d": 200, "m2": 100},
+            "Usc": { "m1": 100, "d": 200, "m2": 100},
+            "Fsc": { "m1": 100, "d": 200, "m2": 100}
+        }
+    }
+},
+{
+    "name": "prio",
+    "type": "qdisc",
+    "interface": "dummy",
+    "handle": "21:0",
+    "parent": "1:21",
+    "attr": {
+        "kind": "fq_codel",
+        "fqcodel": {
+            "ecn": 0,
+            "limit": 1500,
+            "flows": 65535,
+            "target": 5000
+        }
+    }
+},
+{
+    "name": "normal",
+    "type": "class",
+    "interface": "dummy",
+    "handle": "1:22",
+    "parent": "1:0",
+    "attr": {
+        "kind": "hfsc",
+        "hfsc": {
+            "Rsc": { "m1": 100, "d": 200, "m2": 100},
+            "Usc": { "m1": 100, "d": 200, "m2": 100},
+            "Fsc": { "m1": 100, "d": 200, "m2": 100}
+        }
+    }
+},
+{
+    "name": "normal",
+    "type": "qdisc",
+    "interface": "dummy",
+    "handle": "22:0",
+    "parent": "1:22",
+    "attr": {
+        "kind": "fq_codel",
+        "fqcodel": {
+            "ecn": 0,
+            "limit": 1500,
+            "flows": 65535,
+            "target": 5000
+        }
+    }
+},
+{
+    "name": "low",
+    "type": "class",
+    "interface": "dummy",
+    "handle": "1:23",
+    "parent": "1:0",
+    "attr": {
+        "kind": "hfsc",
+        "hfsc": {
+            "Rsc": { "m1": 100, "d": 200, "m2": 100},
+            "Usc": { "m1": 100, "d": 200, "m2": 100},
+            "Fsc": { "m1": 100, "d": 200, "m2": 100}
+        }
+    }
+},
+{
+    "name": "low",
+    "type": "qdisc",
+    "interface": "dummy",
+    "handle": "23:0",
+    "parent": "1:23",
+    "attr": {
+        "kind": "fq_codel",
+        "fqcodel": {
+            "ecn": 0,
+            "limit": 1500,
+            "flows": 65535,
+            "target": 5000
+        }
+    }
+}
+]
+
