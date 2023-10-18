@@ -1,20 +1,20 @@
 [{
     "name": "root",
     "type": "qdisc",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "1:0",
     "parent": "root",
     "attr": {
-        "Kind": "hfsc",
-        "HfscQOpt": {
-            "DefCls": 2
+        "kind": "hfsc",
+        "hfscqopt": {
+            "defcls": 2
         }
     }
 },
 {
     "name": "prio",
     "type": "class",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "1:21",
     "parent": "1:0",
     "attr": {
@@ -29,7 +29,7 @@
 {
     "name": "prio",
     "type": "qdisc",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "21:0",
     "parent": "1:21",
     "attr": {
@@ -45,7 +45,7 @@
 {
     "name": "normal",
     "type": "class",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "1:22",
     "parent": "1:0",
     "attr": {
@@ -60,7 +60,7 @@
 {
     "name": "normal",
     "type": "qdisc",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "22:0",
     "parent": "1:22",
     "attr": {
@@ -76,7 +76,7 @@
 {
     "name": "low",
     "type": "class",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "1:23",
     "parent": "1:0",
     "attr": {
@@ -91,7 +91,7 @@
 {
     "name": "low",
     "type": "qdisc",
-    "interface": "dummy",
+    "interface": "test-01",
     "handle": "23:0",
     "parent": "1:23",
     "attr": {
