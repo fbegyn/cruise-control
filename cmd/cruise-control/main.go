@@ -1,64 +1,59 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/florianl/go-tc"
-	"github.com/mdlayher/netlink"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
-	"within.website/ln"
-	"within.website/ln/opname"
+)
+
+var (
+	logger *slog.Logger
+	rtnl   *tc.Tc
 )
 
 // Config represents the config in struct shape
-//
-//go:generate go run ../gen/main.go ../gen/helpers.go
 type Config struct {
 	Addr string
 }
 
-var (
-	logger *slog.Logger
-)
-
 func main() {
 	flag.Parse()
 
-	ctx := opname.With(context.Background(), "main")
 	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	logger.Info("initializing cruise control")
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath("./")
 	if err := viper.ReadInConfig(); err != nil {
-		ln.FatalErr(ctx, err)
+		logger.Error("cannot read the config", "err", err)
+		os.Exit(1)
 	}
 	conf := Config{}
 	viper.Unmarshal(&conf)
 
 	mux := http.NewServeMux()
+	// handle general operations
+	mux.HandleFunc("GET /api/v1/tc/{interface}", ObjectListHandler)
+	mux.HandleFunc("POST /api/v1/tc/{interface}", ObjectCreateHandler)
+	// handle specific operations
+	// mux.HandleFunc("GET /api/v1/tc/{interface}/{handle}", ObjectGetHandler)
+	mux.HandleFunc("UPDATE /api/v1/tc/{interface}/{handle}", ObjectUpdateHandler)
 
-	// http.HandleFunc("/api/tc/apply", TCApplyHandler)
-	// http.HandleFunc("/api/tc/create", TCCreateHandler)
-	mux.HandleFunc("/api/tc/objects", ObjectCreateHandler)
-	// http.HandleFunc("/api/tc/handles/<handle>", HandleGetHandler)
-	// http.HandleFunc("/api/tc/handles/<handle>", HandlePutHandler)
 	logger.Info("starting API server", "addr", conf.Addr)
 	if err := http.ListenAndServe(conf.Addr, mux); err != nil {
 		logger.Error("cannot start API server", "err", err)
+		os.Exit(5)
 	}
 }
 
-type JSONObject struct {
+type JsonObject struct {
 	Name      string       `json:"name,omitempty"`
 	Type      string       `json:"type"`
 	Interface string       `json:"interface"`
@@ -67,36 +62,98 @@ type JSONObject struct {
 	Attr      tc.Attribute `json:"attr"`
 }
 
-func JSONToTC(json JSONObject) (tc.Object, error) {
-	handle, err := StrHandle(json.Handle)
+func ObjectListHandler(w http.ResponseWriter, r *http.Request) {
+	// handle general response settings
+	w.Header().Set("Content-Type", "application/json")
+
+	// open a go-tc socket
+	rtnl, err := CreateTcSocket()
 	if err != nil {
-		logger.Error("failed to parse handle", "handle", json.Handle, "err", err)
-		return tc.Object{}, fmt.Errorf("failed to parse handle")
+		logger.Error("failed to open rtnetlink socket", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("failed to open rtnetlink socket"))
+		return
 	}
-	parent, err := StrHandle(json.Parent)
+	defer func() {
+		if err := rtnl.Close(); err != nil {
+			logger.Error("failed to close rtnetlink socket", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("failed to close rtnetlink socket"))
+			return
+		}
+		logger.Debug("closed rtnetlink socket")
+	}()
+	logger.Debug("opened rtnetlink socket")
+
+	JsonArray := []JsonObject{}
+	interfaceString := r.PathValue("interface")
+	interf, err := net.InterfaceByName(interfaceString)
 	if err != nil {
-		logger.Error("failed to parse parent", "parent", json.Handle, "err", err)
-		return tc.Object{}, fmt.Errorf("failed to parse parent")
+		logger.Error("failed to find interface", "err", err, "interface", interfaceString)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("failed to find interface"))
+		return
 	}
-	interf, err := net.InterfaceByName(json.Interface)
+
+	qdiscs, err := rtnl.Qdisc().Get()
 	if err != nil {
-		logger.Error("failed to lookup interface", "interface", json.Interface, "err", err)
-		return tc.Object{}, fmt.Errorf("failed to lookup interface")
+		logger.Error("failed to fetch qdiscs", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	return tc.Object{
-		Msg: tc.Msg{
-			Family:  unix.AF_UNSPEC,
-			Ifindex: uint32(interf.Index),
-			Handle:  handle,
-			Parent:  parent,
-		},
-		Attribute: json.Attr,
-	}, nil
+	classes, err := rtnl.Class().Get(&tc.Msg{
+		Family:  unix.AF_UNSPEC,
+		Ifindex: uint32(interf.Index),
+	})
+	if err != nil {
+		logger.Error("failed to fetch classes", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	filters, err := rtnl.Class().Get(&tc.Msg{
+		Family:  unix.AF_UNSPEC,
+		Ifindex: uint32(interf.Index),
+	})
+	if err != nil {
+		logger.Error("failed to fetch filters", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, qd := range qdiscs {
+		if qd.Ifindex != uint32(interf.Index) {
+			continue
+		}
+		JsonArray = append(JsonArray, TCToJson(qd, "qdisc"))
+	}
+	for _, cl := range classes {
+		if cl.Ifindex != uint32(interf.Index) {
+			continue
+		}
+		JsonArray = append(JsonArray, TCToJson(cl, "class"))
+	}
+	for _, fl := range filters {
+		if fl.Ifindex != uint32(interf.Index) {
+			continue
+		}
+		JsonArray = append(JsonArray, TCToJson(fl, "filter"))
+	}
+
+	bytes, err := json.Marshal(JsonArray)
+	if err != nil {
+		logger.Error("failed to marshal tc objects into json", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(bytes)
 }
 
 func ObjectCreateHandler(w http.ResponseWriter, r *http.Request) {
-	data := []JSONObject{}
+	w.Header().Set("Content-Type", "application/json")
 
+	data := []JsonObject{}
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		logger.Error("failed reading body", "err", err)
@@ -104,33 +161,29 @@ func ObjectCreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-
 	logger.Info("parsed data packet into TC objects")
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("Cruise control updated"))
-
 
 	// open a go-tc socket
-	rtnl, err := tc.Open(&tc.Config{})
+	rtnl, err := CreateTcSocket()
 	if err != nil {
 		logger.Error("failed to open rtnetlink socket", "err", err)
-		return
-	}
-	err = rtnl.SetOption(netlink.ExtendedAcknowledge, true)
-	if err != nil {
-		logger.Error("failed to set extended acknowledge", "err", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("failed to open rtnetlink socket"))
 		return
 	}
 	defer func() {
 		if err := rtnl.Close(); err != nil {
-		logger.Error("failed to close rtnetlink socket", "err", err)
+			logger.Error("failed to close rtnetlink socket", "err", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("failed to close rtnetlink socket"))
+			return
 		}
+		logger.Debug("closed rtnetlink socket")
 	}()
-	logger.Info("opened rtnetlink socket")
+	logger.Debug("opened rtnetlink socket")
 
 	for _, d := range data {
-		obj, err := JSONToTC(d)
+		obj, err := JsonToTC(d)
 		if err != nil {
 			logger.Error("failed to convert JSON into TC obj", "err", err)
 			continue
@@ -165,4 +218,10 @@ func ObjectCreateHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Warn("unkown TC object type", "type", d.Type)
 		}
 	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Cruise control updated"))
+}
+
+func ObjectUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
