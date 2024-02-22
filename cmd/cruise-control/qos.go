@@ -7,14 +7,11 @@ import (
 
 	"github.com/florianl/go-tc"
 	"github.com/florianl/go-tc/core"
-	"within.website/ln"
 
 	"golang.org/x/sys/unix"
 )
 
 func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, internetSpeed int) TcConfig {
-	ln.Log(ctx, ln.Action("qos_setup"))
-
 	internetspeed := math.Ceil(float64(internetSpeed) * 0.95)
 	priospeed := math.Ceil(internetspeed * 0.4)
 	normalspeed := math.Ceil(internetspeed * 0.4)
@@ -264,8 +261,6 @@ func createQoSSimple(ctx context.Context, interf net.Interface, interfaceSpeed, 
 
 func createQoSLanparty(ctx context.Context, interf net.Interface, interfaceSpeed, internetSpeed int) TcConfig {
 	// Enable logging and serve the website
-	ln.Log(ctx, ln.Action("qos_setup"))
-
 	internetspeed := math.Ceil(float64(internetSpeed) * 0.95)
 	reservedspeed := math.Ceil(float64(interfaceSpeed) * 0.2)
 

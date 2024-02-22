@@ -42,7 +42,13 @@ func JsonToTC(payload JsonObject) (tc.Object, error) {
 		return tc.Object{}, err
 	}
 	handle, err := StrHandle(payload.Handle)
+	if err != nil {
+		return tc.Object{}, err
+	}
 	parent, err := StrHandle(payload.Parent)
+	if err != nil {
+		return tc.Object{}, err
+	}
 
 	obj := tc.Object{
 		Msg: tc.Msg{
@@ -144,7 +150,7 @@ func ObjectCreateHandler(w http.ResponseWriter, r *http.Request) {
 			logger.Error("failed to convert JSON into TC obj", "err", err)
 			continue
 		}
-		logger.Info(
+		logger.Debug(
 			"generated TC object",
 			"handle", d.Handle,
 			"parent", d.Parent,
@@ -215,7 +221,6 @@ func ObjectUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	handle := uint32(handleParse)
 	_ = handle
 	logger.Info("handle", handleString, "json", JsonArray, "interface", interf)
-	return
 }
 
 func ObjectGetHandler(w http.ResponseWriter, r *http.Request) {

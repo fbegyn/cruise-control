@@ -59,6 +59,15 @@ func main() {
 	mux.HandleFunc("UPDATE /api/v1/tc/{interface}/{handle}", ObjectUpdateHandler)
 	mux.HandleFunc("PUT /api/v1/tc/{interface}/{handle}", ObjectUpdateHandler)
 
+	// register routes for the network namespaces
+	// handle general operations
+	// mux.HandleFunc("GET /api/v1/tc/{ns}/{interface}", NamespaceObjectListHandler)
+	// mux.HandleFunc("POST /api/v1/tc/{ns}/{interface}", NamespaceObjectCreateHandler)
+	// handle specific operations
+	// mux.HandleFunc("GET /api/v1/tc/{ns}/{interface}/{handle}", NamespaceObjectGetHandler)
+	// mux.HandleFunc("UPDATE /api/v1/tc/{ns}/{interface}/{handle}", NamespaceObjectUpdateHandler)
+	// mux.HandleFunc("PUT /api/v1/tc/{ns}/{interface}/{handle}", NamespaceObjectUpdateHandler)
+
 	logger.Info("starting API server", "addr", conf.Addr)
 	if err := http.ListenAndServe(conf.Addr, mux); err != nil {
 		logger.Error("cannot start API server", "err", err)
